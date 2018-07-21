@@ -4,14 +4,17 @@
 #include "Components/InputComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "UnrealNetwork.h"
+#include "Components/TextRenderComponent.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 
 // Sets default values
 ACharacter1_CPP::ACharacter1_CPP(const FObjectInitializer &ObjectInitializer) : Super(ObjectInitializer)
 {
-	bReplicates = true;
+		bReplicates = true;
 	bReplicateMovement = true;
-
+	SetReplicates(true);
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
@@ -19,6 +22,7 @@ ACharacter1_CPP::ACharacter1_CPP(const FObjectInitializer &ObjectInitializer) : 
 
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("MainCamera"));
 	CameraComp->SetupAttachment(CameraBoom);
+
 }
 
 // Replicates Variables
@@ -29,12 +33,14 @@ void ACharacter1_CPP::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & O
 	DOREPLIFETIME(ACharacter1_CPP, AimYaw);
 	DOREPLIFETIME(ACharacter1_CPP, AimPitch);
 	DOREPLIFETIME(ACharacter1_CPP, Aiming);
+	DOREPLIFETIME(ACharacter1_CPP, bSprinting);
 }
 
 // Called when the game starts or when spawned
 void ACharacter1_CPP::BeginPlay()
 {
 	Super::BeginPlay();
+	//SetAiming(true);
 }
 
 // Called every frame
@@ -42,18 +48,51 @@ void ACharacter1_CPP::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	CurrentDeltaTime = DeltaTime;
-
 	// Set Movement input based on player input.
 	InputDirection = (GetActorForwardVector() * ForwardInput) + (GetActorRightVector() * RightInput);
 	AddMovementInput(InputDirection);
 
 	// Set Pitch And Yaw of character and print to log.
 	SetAimPitchAndYaw();
-	UE_LOG(LogTemp, Warning, TEXT("Pitch: %f, Yaw: %f"), AimPitch, AimYaw);
-
-	// Set Mesh and Actor Rotation to both server and other clients.
+	///UE_LOG(LogTemp, Warning, TEXT("Pitch: %f, Yaw: %f"), AimPitch, AimYaw);
 	SetMeshAndActorRotation();
+	if (TextRenderer != nullptr) {
+		TextRenderer->SetText(bSprinting ? TEXT("Sprinting: True") : TEXT("Sprinting: False"));
+		//TextRenderer->SetText(Aiming ? TEXT("Aiming: True") : TEXT("Aiming: False"));
+	}
 }
+
+//Set Aiming to server and client
+void ACharacter1_CPP::SetAiming(bool bNewAim) {
+	Aiming = bNewAim;
+
+	if (Role < ROLE_Authority) {
+		ServerSetAiming(bNewAim);
+	}
+}
+void ACharacter1_CPP::ServerSetAiming_Implementation(bool bNewAim) {
+	SetAiming(bNewAim);
+}
+bool ACharacter1_CPP::ServerSetAiming_Validate(bool bNewAim) {
+	return true;
+}
+/////////////////////////////////////
+
+void ACharacter1_CPP::SetSprinting(bool bNewSprinting) {
+	bSprinting = bNewSprinting;
+
+	GetCharacterMovement()->MaxWalkSpeed = bSprinting ? SprintSpeed : WalkSpeed;
+
+	if (Role < ROLE_Authority) {
+		ServerSetSprinting(bNewSprinting);
+	}
+}
+
+void ACharacter1_CPP::ServerSetSprinting_Implementation(bool bNewSprinting) {
+	SetSprinting(bNewSprinting);
+}
+bool ACharacter1_CPP::ServerSetSprinting_Validate(bool bNewSprinting) { return true; }
+/////////////////////////////////////
 
 // Called to bind functionality to input
 void ACharacter1_CPP::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -65,140 +104,132 @@ void ACharacter1_CPP::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 
 	PlayerInputComponent->BindAxis("MousePitch", this, &ACharacter1_CPP::AddControllerPitchInput);
 	PlayerInputComponent->BindAxis("MouseYaw", this, &ACharacter1_CPP::AddControllerYawInput);
+
 	PlayerInputComponent->BindAxis("MoveForward", this, &ACharacter1_CPP::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &ACharacter1_CPP::MoveRight);
-	PlayerInputComponent->BindAxis("MoveRight", this, &ACharacter1_CPP::MoveRight);
+
 	PlayerInputComponent->BindAction("Aim", IE_Pressed, this, &ACharacter1_CPP::StartAiming);
 	PlayerInputComponent->BindAction("Aim", IE_Released, this, &ACharacter1_CPP::StopAiming);
+
+	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &ACharacter1_CPP::StartSprinting);
+	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &ACharacter1_CPP::StopSprinting);
+
 }
 void ACharacter1_CPP::MoveForward(float Value){ ForwardInput = Value; }
 void ACharacter1_CPP::MoveRight(float Value){ RightInput = Value; }
 void ACharacter1_CPP::StartAiming() { SetAiming(true); }
 void ACharacter1_CPP::StopAiming() { SetAiming(false); }
+void ACharacter1_CPP::StartSprinting() { SetSprinting(true); }
+void ACharacter1_CPP::StopSprinting() { SetSprinting(false); }
 
-void ACharacter1_CPP::SetAiming(bool Aim) {
-	if (HasAuthority()) {
-		Multicast_SetAiming_Implementation(Aim);
-		Aiming = Aim;
-	}
-	else if (GetController() != nullptr) {
-		Server_SetAiming_Implementation(Aim);
-		Aiming = Aim;
-	}
-}
-void ACharacter1_CPP::Server_SetAiming_Implementation(bool Aim) {
-	Multicast_SetAiming_Implementation(Aim);
-}
-void ACharacter1_CPP::Multicast_SetAiming_Implementation(bool Aim) {
-	UE_LOG(LogTemp, Warning, TEXT("MULTICAST!"));
-	Aiming = Aim;
-}
-bool ACharacter1_CPP::Server_SetAiming_Validate(bool Aim) { return true; }
+//////////////////////////////////////////////////////////
 
 ///--------Set Actor and Mesh Rotation--------///
 // Core of mesh rotatiob functionality
-	void ACharacter1_CPP::SetMeshAndActorRotation() {
-		if (LastControlInputVector != FVector::ZeroVector) {
-			if (HasAuthority() && IsLocallyControlled()) { // Check if the server is a controlled pawn
-				auto R = GetControlRotation();
-				auto FR = FRotator(0, R.Yaw, 0);
-				Multicast_SetMeshActorRotation_Implementation(GetSmoothenedRotation(), FR);
-				SetFinalRotation(GetSmoothenedRotation(), FR);
-			}
-			else if (GetController() != nullptr) { // Check if the pawn is being posessed by a controller
-				auto R = GetControlRotation();
-				auto FR = FRotator(0, R.Yaw, 0);
-				Server_SetMeshActorRotation_Implementation(GetSmoothenedRotation(), FR);
-				SetFinalRotation(GetSmoothenedRotation(), FR);
-			}
+void ACharacter1_CPP::SetMeshAndActorRotation() {
+	if (true) {
+		if (HasAuthority() && IsLocallyControlled()) { // Check if the server is a controlled pawn
+			auto R = GetControlRotation();
+			auto FR = FRotator(0, R.Yaw, 0);
+			Multicast_SetMeshActorRotation_Implementation(GetSmoothenedRotation(), FR);
+			SetFinalRotation(GetSmoothenedRotation(), FR);
+		}
+		else if (GetController() != nullptr) { // Check if the pawn is being posessed by a controller
+			auto R = GetControlRotation();
+			auto FR = FRotator(0, R.Yaw, 0);
+			Server_SetMeshActorRotation_Implementation(GetSmoothenedRotation(), FR);
+			SetFinalRotation(GetSmoothenedRotation(), FR);
 		}
 	}
+}
 
-	// Gets smoothened rotation of mesh
-	FRotator ACharacter1_CPP::GetSmoothenedRotation() {
-		// If moving, use Rotation of input, else use last Mesh's rotation.
-		auto Rotation = (LastControlInputVector != FVector::ZeroVector) ? LastControlInputVector.Rotation() : GetMesh()->GetComponentRotation();
+// Gets smoothened rotation of mesh
+FRotator ACharacter1_CPP::GetSmoothenedRotation() {
+	// If moving, use Rotation of input, else use last Mesh's rotation.
+	auto Rotation = (LastControlInputVector != FVector::ZeroVector) ? LastControlInputVector.Rotation() : GetMesh()->GetComponentRotation();
 	
-		// If aiming, rotate the actor towards the control rotation, else use last Mesh's rotation.
-		auto R = GetControlRotation();
-		Rotation = Aiming ? FRotator(0, R.Yaw, 0) : Rotation;
+	// If aiming, rotate the actor towards the control rotation, else use last Mesh's rotation.
+	auto R = GetControlRotation();
+	Rotation = Aiming ? FRotator(0, R.Yaw, 0) : Rotation;
 
-		// Return smoothened value from mesh's rotation to the target rotation.
-		return FMath::RInterpTo(GetMesh()->GetComponentRotation(), Rotation, CurrentDeltaTime, float(10));
-	}
+	// Return smoothened value from mesh's rotation to the target rotation.
+	return FMath::RInterpTo(GetMesh()->GetComponentRotation(), Rotation, CurrentDeltaTime, float(10));
+}
 
-	// Makes sure the rotation is synced to server and clients
-	void ACharacter1_CPP::Server_SetMeshActorRotation_Implementation(FRotator MeshRotation, FRotator ActorRotation)
-	{
-		Multicast_SetMeshActorRotation_Implementation(MeshRotation, ActorRotation);
-	}
-	void ACharacter1_CPP::Multicast_SetMeshActorRotation_Implementation(FRotator MeshRotation, FRotator ActorRotation)
-	{
-		SetFinalRotation(MeshRotation, ActorRotation);
-	}
-	bool ACharacter1_CPP::Server_SetMeshActorRotation_Validate(FRotator MeshRotation, FRotator ActorRotation) { return true; }
-	void ACharacter1_CPP::SetFinalRotation(FRotator MeshRotation, FRotator ActorRotation) 
-	{
+// Makes sure the rotation is synced to server and clients
+void ACharacter1_CPP::Server_SetMeshActorRotation_Implementation(FRotator MeshRotation, FRotator ActorRotation)
+{
+	Multicast_SetMeshActorRotation_Implementation(MeshRotation, ActorRotation);
+}
+void ACharacter1_CPP::Multicast_SetMeshActorRotation_Implementation(FRotator MeshRotation, FRotator ActorRotation)
+{
+	SetFinalRotation(MeshRotation, ActorRotation);
+}
+bool ACharacter1_CPP::Server_SetMeshActorRotation_Validate(FRotator MeshRotation, FRotator ActorRotation) { return true; }
+void ACharacter1_CPP::SetFinalRotation(FRotator MeshRotation, FRotator ActorRotation) 
+{
+	if (LastControlInputVector != FVector::ZeroVector) {
 		SetActorRotation(ActorRotation);
 		GetMesh()->SetWorldRotation(MeshRotation);
 	}
+}
 ///------------------------------------------///
 
 ///--------Set Pitch And Yaw--------///
-	void ACharacter1_CPP::SetAimPitchAndYaw() {
-		if (HasAuthority() && IsLocallyControlled()) { // Check if the server is a controlled pawn
-			// We're on the server so cast values down to clients
-			Multicast_SetPitchYaw_Implementation(GetPitch(), GetYaw());
+void ACharacter1_CPP::SetAimPitchAndYaw() {
+	if (HasAuthority() && IsLocallyControlled()) { // Check if the server is a controlled pawn
+		// We're on the server so cast values down to clients
+		Multicast_SetPitchYaw_Implementation(GetPitch(), GetYaw());
 
-			// Set values directly so the player won't get input lag
-			AimPitch = GetPitch();
-			AimYaw = GetYaw();
-		}
-		else if (GetController() != nullptr) { // Check if the pawn is being posessed by a controller
-			// We're on a client so cast values up to server
-			Server_SetPitchYaw_Implementation(GetPitch(), GetYaw());
-
-			// Set values directly so the player won't get input lag
-			AimPitch = GetPitch();
-			AimYaw = GetYaw();
-		}
+		// Set values directly so the player won't get input lag
+		AimPitch = GetPitch();
+		AimYaw = GetYaw();
 	}
+	else if (GetController() != nullptr) { // Check if the pawn is being posessed by a controller
+		// We're on a client so cast values up to server
+		Server_SetPitchYaw_Implementation(GetPitch(), GetYaw());
 
-	// Gets pitch relative to mesh rotation
-	float ACharacter1_CPP::GetPitch() {
-		auto B = GetMesh()->GetComponentRotation();
-		auto A = GetControlRotation();
-		auto Delta = NormalizedDeltaRotator(A, B);
-		return Delta.Pitch;
+		// Set values directly so the player won't get input lag
+		AimPitch = GetPitch();
+		AimYaw = GetYaw();
 	}
+}
 
-	// Gets yaw relative to mesh rotation
-	float ACharacter1_CPP::GetYaw() {
-		auto B = GetMesh()->GetComponentRotation();
-		auto A = GetControlRotation();
-		auto Delta = FMath::Clamp(NormalizedDeltaRotator(A, B).Yaw, float(-90), float(90));
-		return Delta;
-	}
+// Gets pitch relative to mesh rotation
+float ACharacter1_CPP::GetPitch() {
+	auto B = GetMesh()->GetComponentRotation();
+	auto A = GetControlRotation();
+	auto Delta = NormalizedDeltaRotator(A, B);
+	return Delta.Pitch;
+}
 
-	// Set value to server
-	void ACharacter1_CPP::Server_SetPitchYaw_Implementation(float Pitch, float Yaw) {
-		Multicast_SetPitchYaw_Implementation(Pitch, Yaw);
-	}
+// Gets yaw relative to mesh rotation
+float ACharacter1_CPP::GetYaw() {
+	auto B = GetMesh()->GetComponentRotation();
+	auto A = GetControlRotation();
+	auto Delta = FMath::Clamp(NormalizedDeltaRotator(A, B).Yaw, float(-90), float(90));
+	return Delta;
+}
 
-	bool ACharacter1_CPP::Server_SetPitchYaw_Validate(float Pitch, float Yaw) { return true; }
+// Set value to server
+void ACharacter1_CPP::Server_SetPitchYaw_Implementation(float Pitch, float Yaw) {
+	Multicast_SetPitchYaw_Implementation(Pitch, Yaw);
+}
 
-	// Multicast values down to clients
-	void ACharacter1_CPP::Multicast_SetPitchYaw_Implementation(float Pitch, float Yaw) {
-		AimPitch = Pitch;
-		AimYaw = Yaw;
-	}
+bool ACharacter1_CPP::Server_SetPitchYaw_Validate(float Pitch, float Yaw) { return true; }
 
-	FRotator ACharacter1_CPP::NormalizedDeltaRotator(FRotator A, FRotator B)
-	{
-		FRotator Delta = A - B;
-		Delta.Normalize();
-		return Delta;
-	}
+// Multicast values down to clients
+void ACharacter1_CPP::Multicast_SetPitchYaw_Implementation(float Pitch, float Yaw) {
+	AimPitch = Pitch;
+	AimYaw = Yaw;
+}
+
+FRotator ACharacter1_CPP::NormalizedDeltaRotator(FRotator A, FRotator B)
+{
+	FRotator Delta = A - B;
+	Delta.Normalize();
+	return Delta;
+}
 ///------------------------------------------///
 
 

@@ -8,6 +8,7 @@
 #include "Camera/CameraComponent.h"
 #include "Core.h"
 #include "UnrealNetwork.h"
+#include "Components/TextRenderComponent.h"
 #include "Character1_CPP.generated.h"
 
 UCLASS()
@@ -22,11 +23,14 @@ public:
 	UPROPERTY(EditAnywhere)
 		float MouseSensitivity;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		USpringArmComponent *CameraBoom;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		UCameraComponent *CameraComp;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+		UTextRenderComponent *TextRenderer;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -45,17 +49,23 @@ public:
 	void MoveRight(float Value);
 	void StartAiming();
 	void StopAiming();
-	void SetAiming(bool Aim);
+	void StartSprinting();
+	void StopSprinting();
+
+	/*UFUNCTION(Server, unreliable, WithValidation)
+		void Server_SetAimingMain(bool Aim);
 
 	UFUNCTION(Server, unreliable, WithValidation)
 		void Server_SetAiming(bool Aim);
 
 	UFUNCTION(NetMulticast, unreliable)
-		void Multicast_SetAiming(bool Aim);
+		void Multicast_SetAiming(bool Aim);*/
 
 	FVector InputDirection = FVector::ZeroVector;
 	float ForwardInput = 0;
 	float RightInput = 0;
+
+		bool AimButtonDown;
 
 	// Used by Animation Blueprint
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
@@ -66,6 +76,26 @@ public:
 
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 		bool Aiming;
+
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
+		bool bSprinting;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+		float WalkSpeed = 200;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+		float SprintSpeed = 500;
+
+	////Aiming
+	void SetAiming(bool bNewAim);
+
+	UFUNCTION(Server, unreliable, WithValidation)
+		void ServerSetAiming(bool bNewAim);
+	
+	void SetSprinting(bool bNewSprinting);
+
+	UFUNCTION(Server, unreliable, WithValidation)
+		void ServerSetSprinting(bool bNewSprinting);
 
 	void SetAimPitchAndYaw();
 	float GetPitch();
@@ -79,7 +109,6 @@ public:
 
 	FRotator NormalizedDeltaRotator(FRotator A, FRotator B);
 
-public:
 	void SetMeshAndActorRotation();
 
 	UFUNCTION(Server, unreliable, WithValidation)
