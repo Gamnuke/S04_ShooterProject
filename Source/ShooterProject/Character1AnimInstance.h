@@ -4,8 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
+#include "Components/StaticMeshComponent.h"
 #include "Character1AnimInstance.generated.h"
 
+class ACharacter1_CPP;
 /**
  * 
  */
@@ -16,6 +18,11 @@ class SHOOTERPROJECT_API UCharacter1AnimInstance : public UAnimInstance
 
 
 public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		ACharacter1_CPP *CharacterRef;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		UStaticMeshComponent *WeaponRef;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		bool Sprinting = false;
 
@@ -37,5 +44,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		bool Falling = false;
 
-	void SetSprinting(bool bSprinting);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		FVector SupportArmEffectorLocation = FVector(0.840000, 0.561680, -0.168000);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		FTransform WeaponHandleLocation;
+
+	UFUNCTION()
+		void ParentTick();
 };

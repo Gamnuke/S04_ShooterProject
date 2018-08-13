@@ -6,10 +6,14 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Core.h"
 #include "UnrealNetwork.h"
 #include "Components/TextRenderComponent.h"
 #include "Character1_CPP.generated.h"
+
+class UCharacter1AnimInstance;
 
 UCLASS()
 class SHOOTERPROJECT_API ACharacter1_CPP : public ACharacter
@@ -32,6 +36,12 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 		UTextRenderComponent *TextRenderer;
 
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
+		USkeletalMeshComponent *OuterMesh;
+
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
+		UStaticMeshComponent *Weapon;
+
 	UPROPERTY(Replicated)
 		FRotator CrntCntrlRot;
 protected:
@@ -48,87 +58,73 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	void MoveForward(float Value);
-	void MoveRight(float Value);
-	void StartAiming();
-	void StopAiming();
-	void StartSprinting();
-	void StopSprinting();
-
-	/*UFUNCTION(Server, unreliable, WithValidation)
-		void Server_SetAimingMain(bool Aim);
-
-	UFUNCTION(Server, unreliable, WithValidation)
-		void Server_SetAiming(bool Aim);
-
-	UFUNCTION(NetMulticast, unreliable)
-		void Multicast_SetAiming(bool Aim);*/
-
+	UCharacter1AnimInstance *AnimInstance;
 	FVector InputDirection = FVector::ZeroVector;
 	float ForwardInput = 0;
 	float RightInput = 0;
 
-		bool AimButtonDown;
+	bool AimButtonDown;
+	bool SprintButtonDown;
 
 	// Used by Animation Blueprint
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 		float AimPitch = 0;
-
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 		float AimYaw = 0;
-
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 		bool Aiming;
-
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 		bool bSprinting;
-
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 		bool bJumping;
-
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 		bool bFalling;
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
+		FTransform WeaponHandleLocation;
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
+		FVector CurrentMovementInput;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float WalkSpeed = 200;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float SprintSpeed = 500;
 
 	////Aiming
+	UFUNCTION(Server, unreliable, WithValidation)
+	void ServerSetAiming(bool bNewAim);
 	void SetAiming(bool bNewAim);
-	UFUNCTION(Server, unreliable, WithValidation)
-		void ServerSetAiming(bool bNewAim);
+	void StartAiming();
+	void StopAiming();
 	
+	UFUNCTION(Server, unreliable, WithValidation)
+	void ServerSetSprinting(bool bNewSprinting);
 	void SetSprinting(bool bNewSprinting);
-	UFUNCTION(Server, unreliable, WithValidation)
-		void ServerSetSprinting(bool bNewSprinting);
+	void StartSprinting();
+	void StopSprinting();
 
+	UFUNCTION(Server, unreliable, WithValidation)
+	void ServerSetFalling();
 	void SetFalling();
-	UFUNCTION(Server, unreliable, WithValidation)
-		void ServerSetFalling();
 
+	UFUNCTION(Server, unreliable, WithValidation)
+	void Server_SetPitchYaw(float Pitch, float Yaw);
 	void SetAimPitchAndYaw();
 	float GetPitch();
 	float GetYaw();
-
-	UFUNCTION(Server, unreliable, WithValidation)
-		void Server_SetPitchYaw(float Pitch, float Yaw);
-
 	UFUNCTION(NetMulticast, unreliable)
-		void Multicast_SetPitchYaw(float Pitch, float Yaw);
-
+	void Multicast_SetPitchYaw(float Pitch, float Yaw);
 	FRotator NormalizedDeltaRotator(FRotator A, FRotator B);
+	FRotator MeshRotation;
 
-	void SetMeshAndActorRotation();
 	UFUNCTION(Server, unreliable, WithValidation)
-		void Server_SetMeshActorRotation();
-	UFUNCTION(NetMulticast, unreliable)
-		void Multicast_SetMeshActorRotation();
+	void ServerSetMeshRotation(FRotator NewRotation, bool ToServer);
+	void SetMeshRotation(FRotator NewRotation, bool ToServer);
+	FRotator GetSmoothRotation(FRotator NewRotation);
 
-	void SetFinalRotation(FRotator MeshRotation, FRotator ActorRotation);
-
-	FRotator GetSmoothenedRotation();
-
+	UFUNCTION(Server, unreliable, WithValidation)
+	void ServerSetMovementInput(FVector MovementInput);
+	void SetMovementInput(FVector MovementInput);
+	void MoveForward(float Value);
+	void MoveRight(float Value);
 };
 
