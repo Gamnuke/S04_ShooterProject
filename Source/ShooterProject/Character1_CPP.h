@@ -31,6 +31,9 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 		UTextRenderComponent *TextRenderer;
+
+	UPROPERTY(Replicated)
+		FRotator CrntCntrlRot;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -80,22 +83,30 @@ public:
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 		bool bSprinting;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
+		bool bJumping;
+
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
+		bool bFalling;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float WalkSpeed = 200;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float SprintSpeed = 500;
 
 	////Aiming
 	void SetAiming(bool bNewAim);
-
 	UFUNCTION(Server, unreliable, WithValidation)
 		void ServerSetAiming(bool bNewAim);
 	
 	void SetSprinting(bool bNewSprinting);
-
 	UFUNCTION(Server, unreliable, WithValidation)
 		void ServerSetSprinting(bool bNewSprinting);
+
+	void SetFalling();
+	UFUNCTION(Server, unreliable, WithValidation)
+		void ServerSetFalling();
 
 	void SetAimPitchAndYaw();
 	float GetPitch();
@@ -110,12 +121,10 @@ public:
 	FRotator NormalizedDeltaRotator(FRotator A, FRotator B);
 
 	void SetMeshAndActorRotation();
-
 	UFUNCTION(Server, unreliable, WithValidation)
-		void Server_SetMeshActorRotation(FRotator MeshRotation, FRotator ActorRotation);
-
+		void Server_SetMeshActorRotation();
 	UFUNCTION(NetMulticast, unreliable)
-		void Multicast_SetMeshActorRotation(FRotator MeshRotation, FRotator ActorRotation);
+		void Multicast_SetMeshActorRotation();
 
 	void SetFinalRotation(FRotator MeshRotation, FRotator ActorRotation);
 

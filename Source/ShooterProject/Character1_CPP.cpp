@@ -34,6 +34,9 @@ void ACharacter1_CPP::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & O
 	DOREPLIFETIME(ACharacter1_CPP, AimPitch);
 	DOREPLIFETIME(ACharacter1_CPP, Aiming);
 	DOREPLIFETIME(ACharacter1_CPP, bSprinting);
+	DOREPLIFETIME(ACharacter1_CPP, bFalling);
+	DOREPLIFETIME(ACharacter1_CPP, CrntCntrlRot);
+
 }
 
 // Called when the game starts or when spawned
@@ -56,10 +59,22 @@ void ACharacter1_CPP::Tick(float DeltaTime)
 	SetAimPitchAndYaw();
 	///UE_LOG(LogTemp, Warning, TEXT("Pitch: %f, Yaw: %f"), AimPitch, AimYaw);
 	SetMeshAndActorRotation();
+	SetFalling();
+
 	if (TextRenderer != nullptr) {
-		TextRenderer->SetText(bSprinting ? TEXT("Sprinting: True") : TEXT("Sprinting: False"));
+		TextRenderer->SetText(Aiming ? TEXT("Aiming: True") : TEXT("Aiming: False"));
 		//TextRenderer->SetText(Aiming ? TEXT("Aiming: True") : TEXT("Aiming: False"));
 	}
+	auto V = FRotator(0, GetVelocity().Rotation().Yaw, 0);
+	auto R = FRotator(0, CameraComp->GetComponentRotation().Yaw, 0);
+	auto F = Aiming ? R : V;
+	bUseControllerRotationYaw = (V == FRotator::ZeroRotator);
+
+	if (F != FRotator::ZeroRotator) {
+		//GetMesh()->SetWorldRotation(F);
+	}
+
+	
 }
 
 //Set Aiming to server and client
@@ -94,6 +109,18 @@ void ACharacter1_CPP::ServerSetSprinting_Implementation(bool bNewSprinting) {
 bool ACharacter1_CPP::ServerSetSprinting_Validate(bool bNewSprinting) { return true; }
 /////////////////////////////////////
 
+void ACharacter1_CPP::SetFalling() {
+	bFalling = GetCharacterMovement()->IsFalling();
+	if (Role < ROLE_Authority) {
+		ServerSetFalling();
+	}
+}
+void ACharacter1_CPP::ServerSetFalling_Implementation() {
+	SetFalling();
+}
+
+bool ACharacter1_CPP::ServerSetFalling_Validate() { return true; }
+
 // Called to bind functionality to input
 void ACharacter1_CPP::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -114,32 +141,26 @@ void ACharacter1_CPP::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &ACharacter1_CPP::StartSprinting);
 	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &ACharacter1_CPP::StopSprinting);
 
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
+
+
 }
-void ACharacter1_CPP::MoveForward(float Value){ ForwardInput = Value; }
-void ACharacter1_CPP::MoveRight(float Value){ RightInput = Value; }
+void ACharacter1_CPP::MoveForward(float Value) { AddMovementInput(GetActorForwardVector()*Value); }
+void ACharacter1_CPP::MoveRight(float Value){ AddMovementInput(GetActorRightVector()*Value); }
+
 void ACharacter1_CPP::StartAiming() { SetAiming(true); }
 void ACharacter1_CPP::StopAiming() { SetAiming(false); }
+
 void ACharacter1_CPP::StartSprinting() { SetSprinting(true); }
 void ACharacter1_CPP::StopSprinting() { SetSprinting(false); }
-
 //////////////////////////////////////////////////////////
 
 ///--------Set Actor and Mesh Rotation--------///
 // Core of mesh rotatiob functionality
 void ACharacter1_CPP::SetMeshAndActorRotation() {
-	if (true) {
-		if (HasAuthority() && IsLocallyControlled()) { // Check if the server is a controlled pawn
-			auto R = GetControlRotation();
-			auto FR = FRotator(0, R.Yaw, 0);
-			Multicast_SetMeshActorRotation_Implementation(GetSmoothenedRotation(), FR);
-			SetFinalRotation(GetSmoothenedRotation(), FR);
-		}
-		else if (GetController() != nullptr) { // Check if the pawn is being posessed by a controller
-			auto R = GetControlRotation();
-			auto FR = FRotator(0, R.Yaw, 0);
-			Server_SetMeshActorRotation_Implementation(GetSmoothenedRotation(), FR);
-			SetFinalRotation(GetSmoothenedRotation(), FR);
-		}
+	
+	if (Role < ROLE_Authority) {
+		//Server_SetMeshActorRotation();
 	}
 }
 
@@ -157,21 +178,27 @@ FRotator ACharacter1_CPP::GetSmoothenedRotation() {
 }
 
 // Makes sure the rotation is synced to server and clients
-void ACharacter1_CPP::Server_SetMeshActorRotation_Implementation(FRotator MeshRotation, FRotator ActorRotation)
+void ACharacter1_CPP::Server_SetMeshActorRotation_Implementation()
 {
-	Multicast_SetMeshActorRotation_Implementation(MeshRotation, ActorRotation);
+	SetMeshAndActorRotation();
 }
-void ACharacter1_CPP::Multicast_SetMeshActorRotation_Implementation(FRotator MeshRotation, FRotator ActorRotation)
-{
-	SetFinalRotation(MeshRotation, ActorRotation);
+
+void ACharacter1_CPP::Multicast_SetMeshActorRotation_Implementation() {
+	auto R = GetControlRotation();
+	auto FR = FRotator(0, R.Yaw, 0);
+	if (GetControlRotation() != FRotator::ZeroRotator && LastControlInputVector != FVector::ZeroVector) {
+		SetActorRotation(FR);
+		GetMesh()->SetWorldRotation(LastControlInputVector.Rotation());
+	}
 }
-bool ACharacter1_CPP::Server_SetMeshActorRotation_Validate(FRotator MeshRotation, FRotator ActorRotation) { return true; }
+
+bool ACharacter1_CPP::Server_SetMeshActorRotation_Validate() { return true; }
 void ACharacter1_CPP::SetFinalRotation(FRotator MeshRotation, FRotator ActorRotation) 
 {
-	if (LastControlInputVector != FVector::ZeroVector) {
+	//if (LastControlInputVector != FVector::ZeroVector) {
 		SetActorRotation(ActorRotation);
 		GetMesh()->SetWorldRotation(MeshRotation);
-	}
+	//}
 }
 ///------------------------------------------///
 
