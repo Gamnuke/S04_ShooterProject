@@ -8,7 +8,12 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Character1AnimInstance.h"
+#include "Weapon.h"
+#include "Components/ChildActorComponent.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Kismet/KismetSystemLibrary.h"
+#include "WeaponComponent.h"
+
 
 // Sets default values
 ACharacter1_CPP::ACharacter1_CPP(const FObjectInitializer &ObjectInitializer) : Super(ObjectInitializer)
@@ -26,6 +31,9 @@ ACharacter1_CPP::ACharacter1_CPP(const FObjectInitializer &ObjectInitializer) : 
 
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(TEXT("MainCamera"));
 	CameraComp->SetupAttachment(CameraBoom);
+
+	WeaponComponent = CreateDefaultSubobject<UWeaponComponent>(FName("WeaponComponent"));
+	WeaponComponent->SetupAttachment(OuterMesh, FName("WeaponSocket"));
 }
 
 // Replicates Variables
@@ -40,7 +48,7 @@ void ACharacter1_CPP::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & O
 	DOREPLIFETIME(ACharacter1_CPP, bFalling);
 	DOREPLIFETIME(ACharacter1_CPP, CrntCntrlRot);
 	DOREPLIFETIME(ACharacter1_CPP, CurrentMovementInput);
-
+	DOREPLIFETIME(ACharacter1_CPP, Firing);
 }
 
 // Called when the game starts or when spawned
@@ -53,11 +61,12 @@ void ACharacter1_CPP::BeginPlay()
 
 		if (AnimInstance != nullptr) {
 			AnimInstance->CharacterRef = this;
-			if (Weapon != nullptr) {
-				AnimInstance->WeaponRef = Weapon;
+			if (WeaponComponent != nullptr) {
+				AnimInstance->WeaponRef = WeaponComponent;
 			}
 		}
 	}
+	SetSprinting(false);
 }
 
 // Called every frame
@@ -70,7 +79,7 @@ void ACharacter1_CPP::Tick(float DeltaTime)
 	SetFalling();
 
 	if (TextRenderer != nullptr) {
-		TextRenderer->SetText(Aiming ? TEXT("Aiming: True") : TEXT("Aiming: False"));
+		TextRenderer->SetText(GetName());
 	}
 
 	if (AnimInstance != nullptr) {
@@ -82,9 +91,20 @@ void ACharacter1_CPP::Tick(float DeltaTime)
 	else {
 		SetMeshRotation(GetActorRotation(), true);
 	}
-	if (Weapon != nullptr) {
-		Weapon->SetWorldRotation(GetActorRotation() + FRotator(AimPitch, 0, 0));
-		WeaponHandleLocation = Weapon->GetSocketTransform(FName("FrontGrip"));
+
+	//Set Weapon Front Grip Location
+	if (WeaponComponent != nullptr) {
+
+		if (Aiming) {
+			WeaponComponent->SetWorldRotation(GetActorRotation() + FRotator(AimPitch, 0, 0));
+		}
+		else {
+			WeaponComponent->SetRelativeRotation(FRotator::ZeroRotator);
+		}
+
+		if (WeaponComponent != nullptr) {
+			WeaponHandleLocation = WeaponComponent->FrontGripSocket;
+		}
 	}
 
 	if (InputComponent != nullptr) {
@@ -111,6 +131,9 @@ void ACharacter1_CPP::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 
 	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &ACharacter1_CPP::StartSprinting);
 	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &ACharacter1_CPP::StopSprinting);
+
+	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ACharacter1_CPP::StartFiring);
+	PlayerInputComponent->BindAction("Fire", IE_Released, this, &ACharacter1_CPP::StopFiring);
 
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 }
@@ -155,6 +178,29 @@ void ACharacter1_CPP::ServerSetAiming_Implementation(bool bNewAim) {
 	SetAiming(bNewAim);
 }
 bool ACharacter1_CPP::ServerSetAiming_Validate(bool bNewAim) { return true; }
+
+//--------Set bFiring--------//
+void ACharacter1_CPP::StartFiring() {
+	FireButtonDown = true;
+	SetFiring(true);
+}
+void ACharacter1_CPP::StopFiring() {
+	FireButtonDown = false;
+	SetFiring(false);
+}
+void ACharacter1_CPP::SetFiring(bool bNewFire) {
+	Firing = bNewFire;
+	if (WeaponComponent != nullptr) {
+		WeaponComponent->SetFiring(bNewFire);
+	}
+	if (Role < ROLE_Authority) {
+		ServerSetFiring(bNewFire);
+	}
+}
+void ACharacter1_CPP::ServerSetFiring_Implementation(bool bNewFire) {
+	SetFiring(bNewFire);
+}
+bool ACharacter1_CPP::ServerSetFiring_Validate(bool bNewFire) { return true; }
 
 //--------Set bSprinting--------//
 void ACharacter1_CPP::StartSprinting() {

@@ -5,9 +5,11 @@
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/ChildActorComponent.h"
 #include "Character1AnimInstance.generated.h"
 
 class ACharacter1_CPP;
+class UWeaponComponent;
 /**
  * 
  */
@@ -21,7 +23,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		ACharacter1_CPP *CharacterRef;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-		UStaticMeshComponent *WeaponRef;
+		UWeaponComponent *WeaponRef;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		bool Sprinting = false;

@@ -11,9 +11,12 @@
 #include "Core.h"
 #include "UnrealNetwork.h"
 #include "Components/TextRenderComponent.h"
+#include "Components/ChildActorComponent.h"
 #include "Character1_CPP.generated.h"
 
 class UCharacter1AnimInstance;
+class AWeapon;
+class UWeaponComponent;
 
 UCLASS()
 class SHOOTERPROJECT_API ACharacter1_CPP : public ACharacter
@@ -40,7 +43,7 @@ public:
 		USkeletalMeshComponent *OuterMesh;
 
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
-		UStaticMeshComponent *Weapon;
+		UWeaponComponent *WeaponComponent;
 
 	UPROPERTY(Replicated)
 		FRotator CrntCntrlRot;
@@ -65,6 +68,7 @@ public:
 
 	bool AimButtonDown;
 	bool SprintButtonDown;
+	bool FireButtonDown;
 
 	// Used by Animation Blueprint
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
@@ -73,6 +77,8 @@ public:
 		float AimYaw = 0;
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 		bool Aiming;
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
+		bool Firing;
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 		bool bSprinting;
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
@@ -95,6 +101,12 @@ public:
 	void SetAiming(bool bNewAim);
 	void StartAiming();
 	void StopAiming();
+
+	UFUNCTION(Server, unreliable, WithValidation)
+	void ServerSetFiring(bool bNewFire);
+	void SetFiring(bool bNewFire);
+	void StartFiring();
+	void StopFiring();
 	
 	UFUNCTION(Server, unreliable, WithValidation)
 	void ServerSetSprinting(bool bNewSprinting);
