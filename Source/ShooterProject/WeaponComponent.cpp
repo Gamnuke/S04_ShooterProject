@@ -5,7 +5,9 @@
 #include "Engine/World.h"
 #include "UnrealNetwork.h"
 #include "Projectile.h"
+#include "Character1_CPP.h"
 #include "DrawDebugHelpers.h"
+#include "Kismet/KismetMathLibrary.h"
 
 
 // Sets default values for this component's properties
@@ -32,7 +34,7 @@ void UWeaponComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 	if (WeaponMesh == nullptr) { return; }
 	//FireWeaponNetworkHandler();
 	ServerFireWeapon();
-
+	//SetAimLocation(AimLocation);
 	if (WeaponMesh != nullptr) {
 		FrontGripSocket = WeaponMesh->GetSocketTransform(FName("FrontGrip"));
 		BarrelSocket = WeaponMesh->GetSocketTransform(FName("Barrel"));
@@ -54,12 +56,14 @@ void UWeaponComponent::FireWeaponNetworkHandler() {
 
 void UWeaponComponent::FireWeapon() {
 	if (Firing && GetWorld()->GetTimeSeconds() > NextShotTime) {
+		if (CharacterRef != nullptr) {
+			CharacterRef->SetWeaponRotation();
+		}
 		NextShotTime = GetWorld()->GetTimeSeconds() + TimeBetweenShots;
-		UE_LOG(LogTemp, Warning, TEXT("SHOT WEAPON!"));
 		DrawDebugLine(
 			GetWorld(),
 			BarrelSocket.GetLocation(),
-			BarrelSocket.GetLocation() + BarrelSocket.GetRotation().GetForwardVector() * 10000,
+			AimLocation,
 			FColor::Orange,
 			false,
 			0.05,
@@ -71,7 +75,10 @@ void UWeaponComponent::FireWeapon() {
 			AProjectile *NewProj = GetWorld()->SpawnActor<AProjectile>(Projectile);
 			if (NewProj != nullptr) {
 				NewProj->SetActorLocation(BarrelSocket.GetLocation());
-				NewProj->ProjectileMesh->SetPhysicsLinearVelocity(BarrelSocket.GetRotation().GetForwardVector() * 2000);
+				FRotator randRecoil = FRotator(FMath::RandRange(-5, 5), FMath::RandRange(-5, 5), FMath::RandRange(-5, 5));
+				FVector Direction = ((AimLocation - BarrelSocket.GetLocation()).Rotation() + randRecoil).Vector();
+				NewProj->ProjectileMesh->SetPhysicsLinearVelocity(Direction * 6000);
+				NewProj->ProjectileMesh->SetPhysicsAngularVelocity(Direction * 1000);
 			}
 		}
 	}
@@ -87,8 +94,22 @@ void UWeaponComponent::ClientFireWeapon_Implementation() {
 	FireWeapon();
 }
 
+void UWeaponComponent::SetAimLocation(FVector newAimLocation) {
+	AimLocation = CharacterRef->AimLocation;
+	if (GetOwner()->Role < ROLE_Authority) {
+		ServerSetAimLocation(newAimLocation);
+	}
+}
+
+void UWeaponComponent::ServerSetAimLocation_Implementation(FVector newAimLocation) {
+	SetAimLocation(newAimLocation);
+}
+bool UWeaponComponent::ServerSetAimLocation_Validate(FVector newAimLocation) {
+	return true;
+}
+
 
 void UWeaponComponent::SetFiring(bool bNewFiring) {
 	Firing = bNewFiring;
 }
-
+ 

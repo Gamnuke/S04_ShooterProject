@@ -12,7 +12,9 @@
 #include "Components/ChildActorComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Kismet/GameplayStatics.h"
 #include "WeaponComponent.h"
+#include "DrawDebugHelpers.h"
 
 
 // Sets default values
@@ -34,6 +36,7 @@ ACharacter1_CPP::ACharacter1_CPP(const FObjectInitializer &ObjectInitializer) : 
 
 	WeaponComponent = CreateDefaultSubobject<UWeaponComponent>(FName("WeaponComponent"));
 	WeaponComponent->SetupAttachment(OuterMesh, FName("WeaponSocket"));
+	WeaponComponent->CharacterRef = this;
 }
 
 // Replicates Variables
@@ -49,6 +52,7 @@ void ACharacter1_CPP::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & O
 	DOREPLIFETIME(ACharacter1_CPP, CrntCntrlRot);
 	DOREPLIFETIME(ACharacter1_CPP, CurrentMovementInput);
 	DOREPLIFETIME(ACharacter1_CPP, Firing);
+	DOREPLIFETIME(ACharacter1_CPP, AimLocation);
 }
 
 // Called when the game starts or when spawned
@@ -78,10 +82,6 @@ void ACharacter1_CPP::Tick(float DeltaTime)
 	SetAimPitchAndYaw();
 	SetFalling();
 
-	if (TextRenderer != nullptr) {
-		TextRenderer->SetText(GetName());
-	}
-
 	if (AnimInstance != nullptr) {
 		AnimInstance->ParentTick();
 	}
@@ -95,12 +95,7 @@ void ACharacter1_CPP::Tick(float DeltaTime)
 	//Set Weapon Front Grip Location
 	if (WeaponComponent != nullptr) {
 
-		if (Aiming) {
-			WeaponComponent->SetWorldRotation(GetActorRotation() + FRotator(AimPitch, 0, 0));
-		}
-		else {
-			WeaponComponent->SetRelativeRotation(FRotator::ZeroRotator);
-		}
+		SetWeaponRotation();
 
 		if (WeaponComponent != nullptr) {
 			WeaponHandleLocation = WeaponComponent->FrontGripSocket;
@@ -110,6 +105,46 @@ void ACharacter1_CPP::Tick(float DeltaTime)
 	if (InputComponent != nullptr) {
 		SetMovementInput(InputComponent->GetAxisValue(FName("MoveForward")) * GetActorForwardVector() + InputComponent->GetAxisValue(FName("MoveRight")) * GetActorRightVector());
 	}
+}
+void ACharacter1_CPP::SetWeaponRotation() {
+	APlayerController *PlayerCont = Cast<APlayerController>(GetController());
+	FHitResult OutHit;
+	FVector WorldLoc;
+	FVector Direction;
+	PlayerCont->DeprojectScreenPositionToWorld(AimPointScreenLocation.X, AimPointScreenLocation.Y, OUT WorldLoc, OUT Direction);
+
+	GetWorld()->LineTraceSingleByChannel(
+		OUT OutHit,
+		WorldLoc, WorldLoc + Direction * 10000,
+		ECollisionChannel::ECC_Camera
+	);
+
+	if (Aiming) {
+		if (PlayerCont != nullptr) {
+			if(OutHit.Actor == nullptr){
+				OutHit.ImpactPoint = WorldLoc + Direction * 10000;
+			}
+			WeaponComponent->SetWorldRotation((OutHit.TraceEnd-WeaponComponent->GetComponentLocation()).Rotation());
+			AimLocation = OutHit.ImpactPoint;
+			ServerSetWeaponRotation(AimLocation);
+			//DrawDebugLine(GetWorld(), OutHit.TraceStart, OutHit.TraceEnd, FColor::Red, false, 0.05,0,10);
+		}
+	}
+	else {
+		AimLocation = OutHit.TraceEnd;
+		ServerSetWeaponRotation(AimLocation);
+		//WeaponComponent->SetAimLocation(OutHit.TraceEnd);
+		WeaponComponent->SetRelativeRotation(FRotator::ZeroRotator);
+	}
+	if (TextRenderer != nullptr) {
+		TextRenderer->SetText(OutHit.ImpactPoint.ToString());
+	}
+}
+void ACharacter1_CPP::ServerSetWeaponRotation_Implementation(FVector newAimLocation) {
+	AimLocation = newAimLocation;
+}
+bool ACharacter1_CPP::ServerSetWeaponRotation_Validate(FVector newAimLocation) {
+	return true;
 }
 
 // Called to bind functionality to input
@@ -305,7 +340,6 @@ bool ACharacter1_CPP::ServerSetMeshRotation_Validate(FRotator NewRotation, bool 
 FRotator ACharacter1_CPP::GetSmoothRotation(FRotator NewRotation) {
 	return FMath::RInterpTo(OuterMesh->GetComponentRotation(), NewRotation, GetWorld()->DeltaTimeSeconds, 10);
 }
-
 
 
 

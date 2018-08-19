@@ -11,6 +11,8 @@
 #include "WeaponComponent.generated.h"
 
 class AProjectile;
+class ACharacter1_CPP;
+
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class SHOOTERPROJECT_API UWeaponComponent : public USceneComponent
 {
@@ -45,6 +47,8 @@ public:
 		float MaxBullets = 600;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		float RecoilDistance = 0.5;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		ACharacter1_CPP *CharacterRef;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		//UClass *Projectile;
@@ -57,6 +61,8 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		UStaticMeshComponent *WeaponMesh;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		FVector AimLocation;
 
 	UFUNCTION()
 		void SetFiring(bool bNewFiring);
@@ -67,6 +73,10 @@ public:
 		void MulticastFireWeapon();
 	UFUNCTION(CLient, Unreliable)
 		void ClientFireWeapon();
+
+	UFUNCTION(Server, WithValidation, Unreliable)
+	void ServerSetAimLocation(FVector newAimLocation);
+	void SetAimLocation(FVector newAimLocation);
 
 	void FireWeaponNetworkHandler();
 private:

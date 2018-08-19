@@ -89,11 +89,15 @@ public:
 		FTransform WeaponHandleLocation;
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 		FVector CurrentMovementInput;
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
+		FVector AimLocation;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float WalkSpeed = 200;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float SprintSpeed = 500;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		FVector2D AimPointScreenLocation;
 
 	////Aiming
 	UFUNCTION(Server, unreliable, WithValidation)
@@ -138,5 +142,10 @@ public:
 	void SetMovementInput(FVector MovementInput);
 	void MoveForward(float Value);
 	void MoveRight(float Value);
+
+	UFUNCTION(Server, unreliable, WithValidation)
+	void ServerSetWeaponRotation(FVector newAimLocation);
+
+	void SetWeaponRotation();
 };
 
