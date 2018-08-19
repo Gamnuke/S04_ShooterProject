@@ -81,7 +81,7 @@ void ACharacter1_CPP::Tick(float DeltaTime)
 
 	SetAimPitchAndYaw();
 	SetFalling();
-
+	
 	if (AnimInstance != nullptr) {
 		AnimInstance->ParentTick();
 	}
@@ -94,11 +94,19 @@ void ACharacter1_CPP::Tick(float DeltaTime)
 
 	//Set Weapon Front Grip Location
 	if (WeaponComponent != nullptr) {
+		if (WeaponComponent->WeaponMesh == nullptr) { return; }
 
 		SetWeaponRotation();
+		WeaponHandleLocation = WeaponComponent->FrontGripSocket;
 
-		if (WeaponComponent != nullptr) {
-			WeaponHandleLocation = WeaponComponent->FrontGripSocket;
+		SetWeaponVariables(
+			WeaponComponent->WeaponMesh->GetSocketTransform(FName("FrontGrip")),
+			WeaponComponent->WeaponMesh->GetSocketTransform(FName("Barrel"))
+		);
+
+		if (Firing && Role == ROLE_AutonomousProxy || Role == ROLE_SimulatedProxy)
+		{
+			WeaponComponent->ServerFireWeapon(AimLocation);
 		}
 	}
 
@@ -124,28 +132,73 @@ void ACharacter1_CPP::SetWeaponRotation() {
 			if(OutHit.Actor == nullptr){
 				OutHit.ImpactPoint = WorldLoc + Direction * 10000;
 			}
-			WeaponComponent->SetWorldRotation((OutHit.TraceEnd-WeaponComponent->GetComponentLocation()).Rotation());
-			AimLocation = OutHit.ImpactPoint;
-			ServerSetWeaponRotation(AimLocation);
-			//DrawDebugLine(GetWorld(), OutHit.TraceStart, OutHit.TraceEnd, FColor::Red, false, 0.05,0,10);
+			//WeaponComponent->SetWorldRotation((OutHit.ImpactPoint-WeaponComponent->GetComponentLocation()).Rotation());
+			//AimLocation = OutHit.ImpactPoint;
+			//ServerSetWeaponRotation(OutHit.ImpactPoint);
+			SetWeaponRotationRepetitive((OutHit.ImpactPoint - WeaponComponent->GetComponentLocation()).Rotation(), OutHit.ImpactPoint, false);
 		}
 	}
 	else {
-		AimLocation = OutHit.TraceEnd;
-		ServerSetWeaponRotation(AimLocation);
-		//WeaponComponent->SetAimLocation(OutHit.TraceEnd);
-		WeaponComponent->SetRelativeRotation(FRotator::ZeroRotator);
+		/*AimLocation = OutHit.TraceEnd;
+		ServerSetWeaponRotation();
+		WeaponComponent->SetRelativeRotation(FRotator::ZeroRotator);*/
+		SetWeaponRotationRepetitive(FRotator::ZeroRotator, OutHit.TraceEnd, true);
 	}
 	if (TextRenderer != nullptr) {
 		TextRenderer->SetText(OutHit.ImpactPoint.ToString());
 	}
+
 }
-void ACharacter1_CPP::ServerSetWeaponRotation_Implementation(FVector newAimLocation) {
-	AimLocation = newAimLocation;
+
+void ACharacter1_CPP::SetWeaponRotationRepetitive(FRotator NewRotation, FVector NewAimLocation, bool Relative)
+{
+	if (Relative)
+	{
+		WeaponComponent->SetRelativeRotation(NewRotation);
+	}
+	else
+	{
+		WeaponComponent->SetWorldRotation(NewRotation);
+	}
+	AimLocation = NewAimLocation;
+
+	//if (Role < ROLE_Authority)
+	//{
+		ServerSetWeaponRotation(NewRotation, NewAimLocation, Relative);
+	//}
 }
-bool ACharacter1_CPP::ServerSetWeaponRotation_Validate(FVector newAimLocation) {
+
+void ACharacter1_CPP::ServerSetWeaponRotation_Implementation(FRotator NewRotation, FVector NewAimLocation, bool Relative) {
+	if (Relative)
+	{
+		WeaponComponent->SetRelativeRotation(NewRotation);
+	}
+	else
+	{
+		WeaponComponent->SetWorldRotation(NewRotation);
+	}
+	AimLocation = NewAimLocation;
+	/*SetWeaponRotationRepetitive(NewRotation, NewAimLocation, Relative);
+	MulticastSetWeaponRotation(NewRotation, NewAimLocation, Relative);*/
+	MulticastSetWeaponRotation(NewRotation, NewAimLocation, Relative);
+}
+bool ACharacter1_CPP::ServerSetWeaponRotation_Validate(FRotator NewRotation, FVector NewAimLocation, bool Relative) {
 	return true;
 }
+
+void ACharacter1_CPP::MulticastSetWeaponRotation_Implementation(FRotator NewRotation, FVector NewAimLocation, bool Relative)
+{
+	if (Relative)
+	{
+		WeaponComponent->SetRelativeRotation(NewRotation);
+	}
+	else
+	{
+		WeaponComponent->SetWorldRotation(NewRotation);
+	}
+	AimLocation = NewAimLocation;
+}
+
 
 // Called to bind functionality to input
 void ACharacter1_CPP::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -225,9 +278,6 @@ void ACharacter1_CPP::StopFiring() {
 }
 void ACharacter1_CPP::SetFiring(bool bNewFire) {
 	Firing = bNewFire;
-	if (WeaponComponent != nullptr) {
-		WeaponComponent->SetFiring(bNewFire);
-	}
 	if (Role < ROLE_Authority) {
 		ServerSetFiring(bNewFire);
 	}
@@ -341,5 +391,28 @@ FRotator ACharacter1_CPP::GetSmoothRotation(FRotator NewRotation) {
 	return FMath::RInterpTo(OuterMesh->GetComponentRotation(), NewRotation, GetWorld()->DeltaTimeSeconds, 10);
 }
 
+void ACharacter1_CPP::SetWeaponVariables(FTransform newBarrelSocket, FTransform newFrontGripSocket)
+{
+	if (WeaponComponent != nullptr)
+	{
+		if (WeaponComponent->WeaponMesh == nullptr) { return; }
+		WeaponComponent->FrontGripSocket = newBarrelSocket;
+			WeaponComponent->BarrelSocket = newFrontGripSocket;
+	}
+
+	if (Role < ROLE_Authority)
+	{
+		ServerSetWeaponVariables(newBarrelSocket, newFrontGripSocket);
+	}
+}
+void ACharacter1_CPP::ServerSetWeaponVariables_Implementation(FTransform newBarrelSocket,FTransform newFrontGripSocket)
+{
+	SetWeaponVariables(newBarrelSocket, newFrontGripSocket);
+}
+
+bool ACharacter1_CPP::ServerSetWeaponVariables_Validate(FTransform newBarrelSocket,FTransform newFrontGripSocket)
+{
+	return true;
+}
 
 

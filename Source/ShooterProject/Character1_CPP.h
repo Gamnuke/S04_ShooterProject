@@ -89,8 +89,7 @@ public:
 		FTransform WeaponHandleLocation;
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 		FVector CurrentMovementInput;
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
-		FVector AimLocation;
+
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float WalkSpeed = 200;
@@ -144,8 +143,22 @@ public:
 	void MoveRight(float Value);
 
 	UFUNCTION(Server, unreliable, WithValidation)
-	void ServerSetWeaponRotation(FVector newAimLocation);
-
+	void ServerSetWeaponRotation(FRotator NewRotation, FVector NewAimLocation, bool Relative);
 	void SetWeaponRotation();
+	UFUNCTION(NetMulticast, unreliable)
+	void MulticastSetWeaponRotation(FRotator NewRotation, FVector NewAimLocation, bool Relative);
+	void SetWeaponRotationRepetitive(FRotator NewRotation, FVector NewAimLocation, bool Relative);
+
+
+	//-----------WEAPON VARIABLES------------//
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
+		FVector AimLocation;
+
+	UFUNCTION(Server, unreliable, WithValidation)
+	void ServerSetWeaponVariables(FTransform newBarrelSocket,
+		FTransform newFrontGripSocket
+	);
+	void SetWeaponVariables(FTransform newBarrelSocket,FTransform newFrontGripSocket);
+
 };
 

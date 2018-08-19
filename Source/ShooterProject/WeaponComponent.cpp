@@ -26,36 +26,14 @@ void UWeaponComponent::BeginPlay()
 	
 }
 
-
 // Called every frame
 void UWeaponComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	if (WeaponMesh == nullptr) { return; }
-	//FireWeaponNetworkHandler();
-	ServerFireWeapon();
-	//SetAimLocation(AimLocation);
-	if (WeaponMesh != nullptr) {
-		FrontGripSocket = WeaponMesh->GetSocketTransform(FName("FrontGrip"));
-		BarrelSocket = WeaponMesh->GetSocketTransform(FName("Barrel"));
-	}
-	// ...
 }
 
-void UWeaponComponent::FireWeaponNetworkHandler() {
-	//if (HasAuthority()) {
-	if (GetOwner()->Role == ROLE_AutonomousProxy || GetOwner()->Role == ROLE_SimulatedProxy) {
-		ServerFireWeapon();
-	}
-
-	//}
-	/*else {
-	ServerFireWeapon();
-	}*/
-}
-
-void UWeaponComponent::FireWeapon() {
-	if (Firing && GetWorld()->GetTimeSeconds() > NextShotTime) {
+void UWeaponComponent::FireWeapon(FVector newAimLocation) {
+	if (GetWorld()->GetTimeSeconds() > NextShotTime) {
 		if (CharacterRef != nullptr) {
 			CharacterRef->SetWeaponRotation();
 		}
@@ -63,7 +41,7 @@ void UWeaponComponent::FireWeapon() {
 		DrawDebugLine(
 			GetWorld(),
 			BarrelSocket.GetLocation(),
-			AimLocation,
+			newAimLocation,
 			FColor::Orange,
 			false,
 			0.05,
@@ -76,40 +54,15 @@ void UWeaponComponent::FireWeapon() {
 			if (NewProj != nullptr) {
 				NewProj->SetActorLocation(BarrelSocket.GetLocation());
 				FRotator randRecoil = FRotator(FMath::RandRange(-5, 5), FMath::RandRange(-5, 5), FMath::RandRange(-5, 5));
-				FVector Direction = ((AimLocation - BarrelSocket.GetLocation()).Rotation() + randRecoil).Vector();
+				FVector Direction = ((newAimLocation - BarrelSocket.GetLocation()).Rotation() + randRecoil).Vector();
 				NewProj->ProjectileMesh->SetPhysicsLinearVelocity(Direction * 6000);
 				NewProj->ProjectileMesh->SetPhysicsAngularVelocity(Direction * 1000);
 			}
 		}
 	}
 }
-void UWeaponComponent::ServerFireWeapon_Implementation() {
-	FireWeapon();
+void UWeaponComponent::ServerFireWeapon_Implementation(FVector newAimLocation) {
+	FireWeapon(newAimLocation);
 }
-bool UWeaponComponent::ServerFireWeapon_Validate() { return true; }
-void UWeaponComponent::MulticastFireWeapon_Implementation() {
-	FireWeapon();
-}
-void UWeaponComponent::ClientFireWeapon_Implementation() {
-	FireWeapon();
-}
-
-void UWeaponComponent::SetAimLocation(FVector newAimLocation) {
-	AimLocation = CharacterRef->AimLocation;
-	if (GetOwner()->Role < ROLE_Authority) {
-		ServerSetAimLocation(newAimLocation);
-	}
-}
-
-void UWeaponComponent::ServerSetAimLocation_Implementation(FVector newAimLocation) {
-	SetAimLocation(newAimLocation);
-}
-bool UWeaponComponent::ServerSetAimLocation_Validate(FVector newAimLocation) {
-	return true;
-}
-
-
-void UWeaponComponent::SetFiring(bool bNewFiring) {
-	Firing = bNewFiring;
-}
+bool UWeaponComponent::ServerFireWeapon_Validate(FVector newAimLocation) { return true; }
  

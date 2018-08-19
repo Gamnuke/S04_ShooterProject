@@ -61,26 +61,11 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		UStaticMeshComponent *WeaponMesh;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		FVector AimLocation;
-
-	UFUNCTION()
-		void SetFiring(bool bNewFiring);
 
 	UFUNCTION(Server, WithValidation, Unreliable)
-		void ServerFireWeapon();
-	UFUNCTION(NetMulticast, Unreliable)
-		void MulticastFireWeapon();
-	UFUNCTION(CLient, Unreliable)
-		void ClientFireWeapon();
+		void ServerFireWeapon(FVector newAimLocation);
 
-	UFUNCTION(Server, WithValidation, Unreliable)
-	void ServerSetAimLocation(FVector newAimLocation);
-	void SetAimLocation(FVector newAimLocation);
-
-	void FireWeaponNetworkHandler();
 private:
 	float NextShotTime;
-	bool Firing;
-	void FireWeapon();
+	void FireWeapon(FVector newAimLocation);
 };
