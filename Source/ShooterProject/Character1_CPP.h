@@ -42,7 +42,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 		USkeletalMeshComponent *OuterMesh;
 
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		UWeaponComponent *WeaponComponent;
 
 	UPROPERTY(Replicated)
@@ -143,11 +143,16 @@ public:
 	void MoveRight(float Value);
 
 	UFUNCTION(Server, unreliable, WithValidation)
-	void ServerSetWeaponRotation(FRotator NewRotation, FVector NewAimLocation, bool Relative);
+	void ServerSetWeaponRotation(FRotator newRotation, bool Relative);
+
+	UFUNCTION(Client, unreliable)
+		void ClientSetWeaponRotation(FRotator newRotation, bool Relative);
+
+	void SetWeaponRotationFinal(FRotator newRotation, bool Relative);
 	void SetWeaponRotation();
-	UFUNCTION(NetMulticast, unreliable)
+	/*UFUNCTION(NetMulticast, unreliable)
 	void MulticastSetWeaponRotation(FRotator NewRotation, FVector NewAimLocation, bool Relative);
-	void SetWeaponRotationRepetitive(FRotator NewRotation, FVector NewAimLocation, bool Relative);
+	void SetWeaponRotationRepetitive(FRotator NewRotation, FVector NewAimLocation, bool Relative);*/
 
 
 	//-----------WEAPON VARIABLES------------//

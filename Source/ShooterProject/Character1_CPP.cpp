@@ -121,6 +121,7 @@ void ACharacter1_CPP::SetWeaponRotation() {
 	FVector Direction;
 	PlayerCont->DeprojectScreenPositionToWorld(AimPointScreenLocation.X, AimPointScreenLocation.Y, OUT WorldLoc, OUT Direction);
 
+	//WorldLoc = WorldLoc + Direction;
 	GetWorld()->LineTraceSingleByChannel(
 		OUT OutHit,
 		WorldLoc, WorldLoc + Direction * 10000,
@@ -132,73 +133,42 @@ void ACharacter1_CPP::SetWeaponRotation() {
 			if(OutHit.Actor == nullptr){
 				OutHit.ImpactPoint = WorldLoc + Direction * 10000;
 			}
-			//WeaponComponent->SetWorldRotation((OutHit.ImpactPoint-WeaponComponent->GetComponentLocation()).Rotation());
-			//AimLocation = OutHit.ImpactPoint;
-			//ServerSetWeaponRotation(OutHit.ImpactPoint);
-			SetWeaponRotationRepetitive((OutHit.ImpactPoint - WeaponComponent->GetComponentLocation()).Rotation(), OutHit.ImpactPoint, false);
+			AimLocation = OutHit.ImpactPoint;
+			ClientSetWeaponRotation((OutHit.ImpactPoint - this->GetActorLocation()).Rotation(), false);
+			if (!HasAuthority()) {
+				ServerSetWeaponRotation((OutHit.ImpactPoint - this->GetActorLocation()).Rotation(), false);
+			}
 		}
 	}
 	else {
-		/*AimLocation = OutHit.TraceEnd;
-		ServerSetWeaponRotation();
-		WeaponComponent->SetRelativeRotation(FRotator::ZeroRotator);*/
-		SetWeaponRotationRepetitive(FRotator::ZeroRotator, OutHit.TraceEnd, true);
-	}
-	if (TextRenderer != nullptr) {
-		TextRenderer->SetText(OutHit.ImpactPoint.ToString());
-	}
+		//SetWeaponRotationRepetitive(FRotator::ZeroRotator, OutHit.TraceEnd, true);
+		WeaponComponent->SetRelativeRotation(FRotator(0,0,0));
+		AimLocation = WeaponComponent->BarrelSocket.GetLocation() + WeaponComponent->BarrelSocket.GetRotation().GetForwardVector() * 1000;
+		ClientSetWeaponRotation(FRotator(0, 0, 0), true);
 
+		if (!HasAuthority()) {
+			ServerSetWeaponRotation(FRotator(0,0,0), true);
+		}
+	}
 }
 
-void ACharacter1_CPP::SetWeaponRotationRepetitive(FRotator NewRotation, FVector NewAimLocation, bool Relative)
-{
-	if (Relative)
-	{
-		WeaponComponent->SetRelativeRotation(NewRotation);
-	}
-	else
-	{
-		WeaponComponent->SetWorldRotation(NewRotation);
-	}
-	AimLocation = NewAimLocation;
-
-	//if (Role < ROLE_Authority)
-	//{
-		ServerSetWeaponRotation(NewRotation, NewAimLocation, Relative);
-	//}
+void ACharacter1_CPP::ServerSetWeaponRotation_Implementation(FRotator newRotation, bool Relative) {
+	SetWeaponRotationFinal(newRotation, Relative);
 }
-
-void ACharacter1_CPP::ServerSetWeaponRotation_Implementation(FRotator NewRotation, FVector NewAimLocation, bool Relative) {
-	if (Relative)
-	{
-		WeaponComponent->SetRelativeRotation(NewRotation);
-	}
-	else
-	{
-		WeaponComponent->SetWorldRotation(NewRotation);
-	}
-	AimLocation = NewAimLocation;
-	/*SetWeaponRotationRepetitive(NewRotation, NewAimLocation, Relative);
-	MulticastSetWeaponRotation(NewRotation, NewAimLocation, Relative);*/
-	MulticastSetWeaponRotation(NewRotation, NewAimLocation, Relative);
-}
-bool ACharacter1_CPP::ServerSetWeaponRotation_Validate(FRotator NewRotation, FVector NewAimLocation, bool Relative) {
+bool ACharacter1_CPP::ServerSetWeaponRotation_Validate(FRotator newRotation, bool Relative) {
 	return true;
 }
-
-void ACharacter1_CPP::MulticastSetWeaponRotation_Implementation(FRotator NewRotation, FVector NewAimLocation, bool Relative)
-{
-	if (Relative)
-	{
-		WeaponComponent->SetRelativeRotation(NewRotation);
-	}
-	else
-	{
-		WeaponComponent->SetWorldRotation(NewRotation);
-	}
-	AimLocation = NewAimLocation;
+void ACharacter1_CPP::ClientSetWeaponRotation_Implementation(FRotator newRotation, bool Relative) {
+	SetWeaponRotationFinal(newRotation, Relative);
 }
-
+void ACharacter1_CPP::SetWeaponRotationFinal(FRotator newRotation, bool Relative) {
+	if (Relative) {
+		WeaponComponent->SetRelativeRotation(newRotation);
+	}
+	else {
+		WeaponComponent->SetWorldRotation(newRotation);
+	}
+}
 
 // Called to bind functionality to input
 void ACharacter1_CPP::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)

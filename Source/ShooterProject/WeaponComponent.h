@@ -51,7 +51,6 @@ public:
 		ACharacter1_CPP *CharacterRef;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		//UClass *Projectile;
 		TSubclassOf<AProjectile> Projectile;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
@@ -59,7 +58,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 		FTransform FrontGripSocket;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 		UStaticMeshComponent *WeaponMesh;
 
 	UFUNCTION(Server, WithValidation, Unreliable)

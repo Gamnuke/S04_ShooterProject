@@ -8,6 +8,7 @@
 #include "Character1_CPP.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Kismet/GameplayStatics.h"
 
 
 // Sets default values for this component's properties
@@ -50,13 +51,15 @@ void UWeaponComponent::FireWeapon(FVector newAimLocation) {
 		);
 
 		if (Projectile != nullptr) {
-			AProjectile *NewProj = GetWorld()->SpawnActor<AProjectile>(Projectile);
+			FActorSpawnParameters Params;
+			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			AProjectile *NewProj = GetWorld()->SpawnActor<AProjectile>(Projectile, Params);
 			if (NewProj != nullptr) {
 				NewProj->SetActorLocation(BarrelSocket.GetLocation());
 				FRotator randRecoil = FRotator(FMath::RandRange(-5, 5), FMath::RandRange(-5, 5), FMath::RandRange(-5, 5));
 				FVector Direction = ((newAimLocation - BarrelSocket.GetLocation()).Rotation() + randRecoil).Vector();
-				NewProj->ProjectileMesh->SetPhysicsLinearVelocity(Direction * 6000);
-				NewProj->ProjectileMesh->SetPhysicsAngularVelocity(Direction * 1000);
+					NewProj->ProjectileMesh->SetPhysicsLinearVelocity(Direction * 3000);
+					NewProj->ProjectileMesh->SetPhysicsAngularVelocity(Direction * 1000);
 			}
 		}
 	}
