@@ -56,8 +56,8 @@ void UWeaponComponent::FireWeapon(FVector newAimLocation) {
 			AProjectile *NewProj = GetWorld()->SpawnActor<AProjectile>(Projectile, Params);
 			if (NewProj != nullptr) {
 				NewProj->SetActorLocation(BarrelSocket.GetLocation());
-				FRotator randRecoil = FRotator(FMath::RandRange(-5, 5), FMath::RandRange(-5, 5), FMath::RandRange(-5, 5));
-				FVector Direction = ((newAimLocation - BarrelSocket.GetLocation()).Rotation() + randRecoil).Vector();
+				FRotator randRecoil = FRotator(FMath::RandRange(-1, 1), FMath::RandRange(-1, 1), FMath::RandRange(-1, 1)) * Spread;
+				FVector Direction = ((newAimLocation - BarrelSocket.GetLocation()).Rotation() + randRecoil).Vector().GetSafeNormal();
 					NewProj->ProjectileMesh->SetPhysicsLinearVelocity(Direction * 3000);
 					NewProj->ProjectileMesh->SetPhysicsAngularVelocity(Direction * 1000);
 			}

@@ -71,6 +71,7 @@ void ACharacter1_CPP::BeginPlay()
 		}
 	}
 	SetSprinting(false);
+	CurrentCameraFOV = MinMaxFOV.X;
 }
 
 // Called every frame
@@ -108,10 +109,27 @@ void ACharacter1_CPP::Tick(float DeltaTime)
 		{
 			WeaponComponent->ServerFireWeapon(AimLocation);
 		}
+
 	}
 
 	if (InputComponent != nullptr) {
 		SetMovementInput(InputComponent->GetAxisValue(FName("MoveForward")) * GetActorForwardVector() + InputComponent->GetAxisValue(FName("MoveRight")) * GetActorRightVector());
+	}
+
+	/*if (CameraBoom != nullptr) {
+		CameraBoom->SetWorldRotation(GetControlRotation());
+		FRotator RelativeCamRot = CameraBoom->RelativeRotation;
+		RelativeCamRot.Pitch = FMath::ClampAngle(RelativeCamRot.Pitch, -45, 45);
+		CameraBoom->SetRelativeRotation(RelativeCamRot);
+	}*/
+	if (GetController() != nullptr) {
+		FRotator ClampedControlRotation = GetControlRotation();
+		ClampedControlRotation.Pitch = FMath::ClampAngle(ClampedControlRotation.Pitch, -80, 70);
+		GetController()->SetControlRotation(ClampedControlRotation);
+	}
+
+	if (CameraComp != nullptr) {
+		CameraComp->SetFieldOfView(FMath::FInterpTo(CameraComp->FieldOfView, CurrentCameraFOV, DeltaTime, ZoomSpeed));
 	}
 }
 void ACharacter1_CPP::SetWeaponRotation() {
@@ -168,6 +186,10 @@ void ACharacter1_CPP::SetWeaponRotationFinal(FRotator newRotation, bool Relative
 	else {
 		WeaponComponent->SetWorldRotation(newRotation);
 	}
+	/*FRotator ClampedRelative = WeaponComponent->GetComponentRotation();
+	ClampedRelative.Pitch = FMath::ClampAngle(ClampedRelative.Pitch,-90, 90);
+	ClampedRelative.Roll = 0;
+	WeaponComponent->SetWorldRotation(ClampedRelative);*/
 }
 
 // Called to bind functionality to input
@@ -227,7 +249,7 @@ void ACharacter1_CPP::StopAiming() {
 }
 void ACharacter1_CPP::SetAiming(bool bNewAim) {
 	Aiming = bNewAim;
-
+	CurrentCameraFOV = Aiming ? MinMaxFOV.Y : MinMaxFOV.X;
 	if (Role == ROLE_AutonomousProxy) {
 		ServerSetAiming(bNewAim);
 	}

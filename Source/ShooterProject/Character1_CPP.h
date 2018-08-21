@@ -65,6 +65,7 @@ public:
 	FVector InputDirection = FVector::ZeroVector;
 	float ForwardInput = 0;
 	float RightInput = 0;
+	float CurrentCameraFOV;
 
 	bool AimButtonDown;
 	bool SprintButtonDown;
@@ -89,6 +90,11 @@ public:
 		FTransform WeaponHandleLocation;
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 		FVector CurrentMovementInput;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=CameraSettings)
+		FVector2D MinMaxFOV = FVector2D(60,80);
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = CameraSettings)
+		float ZoomSpeed = 10;
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
