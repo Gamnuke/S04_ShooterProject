@@ -15,14 +15,15 @@ class SHOOTERPROJECT_API ALineProjectile : public AActor
 	
 public:	
 	// Sets default values for this actor's properties
-	ALineProjectile();
+	ALineProjectile(const FObjectInitializer &ObjectInitializer);
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 		UStaticMeshComponent *Mesh;
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 		USceneComponent *MeshScene;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(Replicated, BlueprintReadWrite, EditAnywhere)
 		FVector TargetPoint;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		float ForwardScale;
@@ -41,4 +42,5 @@ public:
 	float TargetScale = 0;
 	float EndTime;
 	float StartTime;
+	FVector StartLocation;
 };

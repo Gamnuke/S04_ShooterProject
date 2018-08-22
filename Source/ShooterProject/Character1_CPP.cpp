@@ -72,6 +72,8 @@ void ACharacter1_CPP::BeginPlay()
 	}
 	SetSprinting(false);
 	CurrentCameraFOV = MinMaxFOV.X;
+
+	WeaponHandleLocation.SetLocation(WeaponComponent->FrontGripSocket.GetLocation() - WeaponComponent->GetComponentLocation());
 }
 
 // Called every frame
@@ -98,13 +100,11 @@ void ACharacter1_CPP::Tick(float DeltaTime)
 		if (WeaponComponent->WeaponMesh == nullptr) { return; }
 
 		SetWeaponRotation();
-		WeaponHandleLocation = WeaponComponent->FrontGripSocket;
-
+		WeaponHandleLocation.SetRotation(WeaponComponent->FrontGripSocket.GetRotation());
 		SetWeaponVariables(
 			WeaponComponent->WeaponMesh->GetSocketTransform(FName("FrontGrip")),
 			WeaponComponent->WeaponMesh->GetSocketTransform(FName("Barrel"))
 		);
-
 		if (Firing && Role == ROLE_AutonomousProxy || Role == ROLE_SimulatedProxy)
 		{
 			WeaponComponent->ServerFireWeapon(AimLocation);
@@ -145,16 +145,18 @@ void ACharacter1_CPP::SetWeaponRotation() {
 		WorldLoc, WorldLoc + Direction * 10000,
 		ECollisionChannel::ECC_Camera
 	);
-
 	if (Aiming) {
 		if (PlayerCont != nullptr) {
-			if(OutHit.Actor == nullptr){
-				OutHit.ImpactPoint = WorldLoc + Direction * 10000;
+			if(OutHit.bBlockingHit){
+				AimLocation = OutHit.ImpactPoint;
+
 			}
-			AimLocation = OutHit.ImpactPoint;
-			ClientSetWeaponRotation((OutHit.ImpactPoint - this->GetActorLocation()).Rotation(), false);
+			else {
+				AimLocation = WorldLoc + Direction * 10000;
+			}
+			ClientSetWeaponRotation((AimLocation - WeaponComponent->GetComponentLocation()).Rotation(), false);
 			if (!HasAuthority()) {
-				ServerSetWeaponRotation((OutHit.ImpactPoint - this->GetActorLocation()).Rotation(), false);
+				ServerSetWeaponRotation((AimLocation - WeaponComponent->GetComponentLocation()).Rotation(), false);
 			}
 		}
 	}

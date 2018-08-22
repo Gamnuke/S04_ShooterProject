@@ -62,8 +62,15 @@ public:
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 		UStaticMeshComponent *WeaponMesh;
 
-	UFUNCTION(Server, WithValidation, Unreliable)
+	UFUNCTION(Server, WithValidation, Reliable)
 		void ServerFireWeapon(FVector newAimLocation);
+
+	UFUNCTION(Client, Unreliable)
+		void ClientRecoilWeapon();
+
+	UFUNCTION(Client, Unreliable)
+		void ClientFireWeapon(FVector newAimLocation);
+
 
 private:
 	float NextShotTime;

@@ -49,7 +49,6 @@ void AWeapon::FireWeaponNetworkHandler() {
 
 void AWeapon::FireWeapon() {
 	NextShotTime = GetWorld()->GetTimeSeconds() + TimeBetweenShots;
-	UE_LOG(LogTemp, Warning, TEXT("SHOT WEAPON!"));
 	DrawDebugLine(
 		GetWorld(),
 		BarrelSocket.GetLocation(),

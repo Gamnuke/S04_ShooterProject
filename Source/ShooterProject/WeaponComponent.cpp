@@ -31,6 +31,12 @@ void UWeaponComponent::BeginPlay()
 void UWeaponComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	if (!GetOwner()->HasAuthority()) {
+		FVector InterpedLocation = FMath::VInterpTo(RelativeLocation, FVector::ZeroVector, DeltaTime, 20);
+		SetRelativeLocation(InterpedLocation);
+	}
+	
 }
 
 void UWeaponComponent::FireWeapon(FVector newAimLocation) {
@@ -39,35 +45,55 @@ void UWeaponComponent::FireWeapon(FVector newAimLocation) {
 			CharacterRef->SetWeaponRotation();
 		}
 		NextShotTime = GetWorld()->GetTimeSeconds() + TimeBetweenShots;
-		DrawDebugLine(
-			GetWorld(),
-			BarrelSocket.GetLocation(),
-			newAimLocation,
-			FColor::Orange,
-			false,
-			0.05,
-			0,
-			6
-		);
+		ClientRecoilWeapon();
 
+		// Applies spread to weapon fire
+		FRotator randRecoil = FRotator(FMath::RandRange(-1, 1), FMath::RandRange(-1, 1), FMath::RandRange(-1, 1)) * Spread;
+		FVector Direction = ((newAimLocation - BarrelSocket.GetLocation()).Rotation() + randRecoil).Vector().GetSafeNormal();
+
+		// Line trace from barrel to the new spreadded location
+		FHitResult SpreaddedTraj;
+		GetWorld()->LineTraceSingleByChannel(
+			SpreaddedTraj,
+			BarrelSocket.GetLocation(),
+			BarrelSocket.GetLocation() + Direction * 10000,
+			ECollisionChannel::ECC_Camera
+		);
+		FVector HitLocation;
+		if (SpreaddedTraj.bBlockingHit) {
+			HitLocation = SpreaddedTraj.ImpactPoint;
+		}
+		else {
+			HitLocation = SpreaddedTraj.TraceEnd;
+		}
+
+		// Spawn projectile towards line trace hit location
 		if (Projectile != nullptr) {
 			FActorSpawnParameters Params;
 			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 			ALineProjectile *NewProj = GetWorld()->SpawnActor<ALineProjectile>(Projectile, Params);
+
 			if (NewProj != nullptr) {
 				NewProj->SetActorLocation(BarrelSocket.GetLocation());
-				FRotator randRecoil = FRotator(FMath::RandRange(-1, 1), FMath::RandRange(-1, 1), FMath::RandRange(-1, 1)) * Spread;
-				FVector Direction = ((newAimLocation - BarrelSocket.GetLocation()).Rotation() + randRecoil).Vector().GetSafeNormal();
-					NewProj->Mesh->SetPhysicsLinearVelocity(Direction * 3000);
-					NewProj->Mesh->SetPhysicsAngularVelocity(Direction * 1000);
-					NewProj->SetActorRotation((newAimLocation - BarrelSocket.GetLocation()).Rotation());
-					NewProj->TargetPoint = newAimLocation;
+				NewProj->TargetPoint = HitLocation;
+				UE_LOG(LogTemp, Warning, TEXT("Aimlocation : %s"), *NewProj->TargetPoint.ToString());
+				NewProj->SetActorRotation((HitLocation - BarrelSocket.GetLocation()).Rotation());
 			}
 		}
 	}
+
 }
 void UWeaponComponent::ServerFireWeapon_Implementation(FVector newAimLocation) {
 	FireWeapon(newAimLocation);
 }
 bool UWeaponComponent::ServerFireWeapon_Validate(FVector newAimLocation) { return true; }
+void UWeaponComponent::ClientFireWeapon_Implementation(FVector newAimLocation) {
+	FireWeapon(newAimLocation);
+}
+
+void UWeaponComponent::ClientRecoilWeapon_Implementation() {
+	if (WeaponMesh != nullptr) {
+		SetWorldLocation(GetComponentLocation() - (GetForwardVector() * RecoilDistance));
+	}
+}
  

@@ -3,10 +3,16 @@
 #include "LineProjectile.h"
 #include "Engine/World.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "UnrealNetwork.h"
 
+void ALineProjectile::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ALineProjectile, TargetPoint);
+}
 
 // Sets default values
-ALineProjectile::ALineProjectile()
+ALineProjectile::ALineProjectile(const FObjectInitializer &ObjectInitializer) : Super(ObjectInitializer)
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -21,9 +27,10 @@ ALineProjectile::ALineProjectile()
 void ALineProjectile::BeginPlay()
 {
 	Super::BeginPlay();
-	TargetScale = FVector::Distance(GetActorLocation(), TargetPoint)/100;
+	TargetScale = FVector::Dist(GetActorLocation(), TargetPoint) / 100;
 	StartTime = GetWorld()->TimeSeconds;
 	EndTime = StartTime + Duration;
+	StartLocation = GetActorLocation();
 }
 
 // Called every frame
@@ -31,7 +38,15 @@ void ALineProjectile::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	float Alpha = FMath::Clamp(UKismetMathLibrary::NormalizeToRange(GetWorld()->TimeSeconds, StartTime, EndTime),0.0f,1.0f);
-	UE_LOG(LogTemp, Warning, TEXT("%f"),Alpha);
-	SetActorScale3D(FVector(FMath::Lerp(float(0), TargetScale, Alpha), GetActorScale3D().Y, GetActorScale3D().Z));
+	float QuadAlpha = -4 * FMath::Pow(Alpha,2) + 4 * Alpha;
+
+	MeshScene->SetRelativeScale3D(FVector(TargetScale * QuadAlpha, GetActorScale3D().Y, GetActorScale3D().Z));
+	if (Alpha >= 0.5) {
+		SetActorLocation(TargetPoint);
+		SetActorRotation((StartLocation - TargetPoint).Rotation());
+	}
+	if (Alpha >= 1) {
+		Destroy();
+	}
 }
 
