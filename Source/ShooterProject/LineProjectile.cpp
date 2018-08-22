@@ -21,7 +21,7 @@ ALineProjectile::ALineProjectile()
 void ALineProjectile::BeginPlay()
 {
 	Super::BeginPlay();
-	TargetScale = FVector::Distance(GetActorLocation(), TargetPoint) / 100;
+	TargetScale = FVector::Distance(GetActorLocation(), TargetPoint)/100;
 	StartTime = GetWorld()->TimeSeconds;
 	EndTime = StartTime + Duration;
 }
@@ -32,6 +32,6 @@ void ALineProjectile::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	float Alpha = FMath::Clamp(UKismetMathLibrary::NormalizeToRange(GetWorld()->TimeSeconds, StartTime, EndTime),0.0f,1.0f);
 	UE_LOG(LogTemp, Warning, TEXT("%f"),Alpha);
-	SetActorScale3D(FVector(FMath::Lerp(float(1), TargetScale, Alpha), GetActorScale3D().Y, GetActorScale3D().Z));
+	SetActorScale3D(FVector(FMath::Lerp(float(0), TargetScale, Alpha), GetActorScale3D().Y, GetActorScale3D().Z));
 }
 

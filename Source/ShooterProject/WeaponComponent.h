@@ -12,6 +12,7 @@
 
 class AProjectile;
 class ACharacter1_CPP;
+class ALineProjectile;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class SHOOTERPROJECT_API UWeaponComponent : public USceneComponent
@@ -51,7 +52,7 @@ public:
 		ACharacter1_CPP *CharacterRef;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-		TSubclassOf<AProjectile> Projectile;
+		TSubclassOf<ALineProjectile> Projectile;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 		FTransform BarrelSocket;

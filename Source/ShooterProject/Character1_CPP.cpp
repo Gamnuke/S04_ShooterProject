@@ -161,7 +161,7 @@ void ACharacter1_CPP::SetWeaponRotation() {
 	else {
 		//SetWeaponRotationRepetitive(FRotator::ZeroRotator, OutHit.TraceEnd, true);
 		WeaponComponent->SetRelativeRotation(FRotator(0,0,0));
-		AimLocation = WeaponComponent->BarrelSocket.GetLocation() + WeaponComponent->BarrelSocket.GetRotation().GetForwardVector() * 1000;
+		AimLocation = WeaponComponent->BarrelSocket.GetLocation() + WeaponComponent->BarrelSocket.GetRotation().GetForwardVector() * 10000000;
 		ClientSetWeaponRotation(FRotator(0, 0, 0), true);
 
 		if (!HasAuthority()) {

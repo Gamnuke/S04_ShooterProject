@@ -9,7 +9,7 @@
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/GameplayStatics.h"
-
+#include "LineProjectile.h"
 
 // Sets default values for this component's properties
 UWeaponComponent::UWeaponComponent()
@@ -53,13 +53,15 @@ void UWeaponComponent::FireWeapon(FVector newAimLocation) {
 		if (Projectile != nullptr) {
 			FActorSpawnParameters Params;
 			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-			AProjectile *NewProj = GetWorld()->SpawnActor<AProjectile>(Projectile, Params);
+			ALineProjectile *NewProj = GetWorld()->SpawnActor<ALineProjectile>(Projectile, Params);
 			if (NewProj != nullptr) {
 				NewProj->SetActorLocation(BarrelSocket.GetLocation());
 				FRotator randRecoil = FRotator(FMath::RandRange(-1, 1), FMath::RandRange(-1, 1), FMath::RandRange(-1, 1)) * Spread;
 				FVector Direction = ((newAimLocation - BarrelSocket.GetLocation()).Rotation() + randRecoil).Vector().GetSafeNormal();
-					NewProj->ProjectileMesh->SetPhysicsLinearVelocity(Direction * 3000);
-					NewProj->ProjectileMesh->SetPhysicsAngularVelocity(Direction * 1000);
+					NewProj->Mesh->SetPhysicsLinearVelocity(Direction * 3000);
+					NewProj->Mesh->SetPhysicsAngularVelocity(Direction * 1000);
+					NewProj->SetActorRotation((newAimLocation - BarrelSocket.GetLocation()).Rotation());
+					NewProj->TargetPoint = newAimLocation;
 			}
 		}
 	}
