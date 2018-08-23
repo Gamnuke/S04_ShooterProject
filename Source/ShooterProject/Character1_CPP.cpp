@@ -72,7 +72,7 @@ void ACharacter1_CPP::BeginPlay()
 	}
 	SetSprinting(false);
 	CurrentCameraFOV = MinMaxFOV.X;
-
+	WeaponComponent->CharacterRef = this;
 	WeaponHandleLocation.SetLocation(WeaponComponent->FrontGripSocket.GetLocation() - WeaponComponent->GetComponentLocation());
 }
 

@@ -33,8 +33,8 @@ void UWeaponComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
 	if (!GetOwner()->HasAuthority()) {
-		FVector InterpedLocation = FMath::VInterpTo(RelativeLocation, FVector::ZeroVector, DeltaTime, 20);
-		SetRelativeLocation(InterpedLocation);
+		FVector InterpedLocation = FMath::VInterpTo(WeaponMesh->RelativeLocation, FVector::ZeroVector, DeltaTime, 20);
+		WeaponMesh->SetRelativeLocation(InterpedLocation);
 	}
 	
 }
@@ -80,6 +80,12 @@ void UWeaponComponent::FireWeapon(FVector newAimLocation) {
 				NewProj->SetActorRotation((HitLocation - BarrelSocket.GetLocation()).Rotation());
 			}
 		}
+		// Camera Recoil Effect
+		if (CharacterRef != nullptr)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Chaning FOV"));
+			ClientFireWeapon(FVector::ZeroVector);
+		}
 	}
 
 }
@@ -88,12 +94,14 @@ void UWeaponComponent::ServerFireWeapon_Implementation(FVector newAimLocation) {
 }
 bool UWeaponComponent::ServerFireWeapon_Validate(FVector newAimLocation) { return true; }
 void UWeaponComponent::ClientFireWeapon_Implementation(FVector newAimLocation) {
-	FireWeapon(newAimLocation);
+	CharacterRef->CameraComp->SetFieldOfView(CharacterRef->CameraComp->FieldOfView - FOVIncrement);
 }
 
 void UWeaponComponent::ClientRecoilWeapon_Implementation() {
 	if (WeaponMesh != nullptr) {
-		SetWorldLocation(GetComponentLocation() - (GetForwardVector() * RecoilDistance));
+		WeaponMesh->AddRelativeLocation(FVector::ForwardVector * RecoilDistance);
+
+		// SetWorldLocation(WeaponMesh->GetComponentLocation() - (WeaponMesh->GetForwardVector() * RecoilDistance));
 	}
 }
  
