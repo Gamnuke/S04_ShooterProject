@@ -15,14 +15,11 @@
 #include "Kismet/GameplayStatics.h"
 #include "WeaponComponent.h"
 #include "DrawDebugHelpers.h"
-
+#include "LineProjectile.h"
 
 // Sets default values
 ACharacter1_CPP::ACharacter1_CPP(const FObjectInitializer &ObjectInitializer) : Super(ObjectInitializer)
 {
-	bReplicates = true;
-	bReplicateMovement = true;
-	SetReplicates(true);
 	PrimaryActorTick.bCanEverTick = true;
 
 	OuterMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("OuterMesh"));
@@ -48,10 +45,7 @@ void ACharacter1_CPP::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & O
 	DOREPLIFETIME(ACharacter1_CPP, AimPitch);
 	DOREPLIFETIME(ACharacter1_CPP, Aiming);
 	DOREPLIFETIME(ACharacter1_CPP, bSprinting);
-	DOREPLIFETIME(ACharacter1_CPP, bFalling);
-	DOREPLIFETIME(ACharacter1_CPP, CrntCntrlRot);
 	DOREPLIFETIME(ACharacter1_CPP, CurrentMovementInput);
-	DOREPLIFETIME(ACharacter1_CPP, Firing);
 	DOREPLIFETIME(ACharacter1_CPP, AimLocation);
 }
 
@@ -105,16 +99,18 @@ void ACharacter1_CPP::Tick(float DeltaTime)
 			WeaponComponent->WeaponMesh->GetSocketTransform(FName("FrontGrip")),
 			WeaponComponent->WeaponMesh->GetSocketTransform(FName("Barrel"))
 		);
-		if (Firing && Role == ROLE_AutonomousProxy || Role == ROLE_SimulatedProxy)
+
+		if (Firing && Role == ROLE_AutonomousProxy)
 		{
 			WeaponComponent->ServerFireWeapon(AimLocation);
+
 		}
 
 	}
 
-	if (InputComponent != nullptr) {
+	/*if (InputComponent != nullptr) {
 		SetMovementInput(InputComponent->GetAxisValue(FName("MoveForward")) * GetActorForwardVector() + InputComponent->GetAxisValue(FName("MoveRight")) * GetActorRightVector());
-	}
+	}*/
 
 	/*if (CameraBoom != nullptr) {
 		CameraBoom->SetWorldRotation(GetControlRotation());
@@ -122,11 +118,7 @@ void ACharacter1_CPP::Tick(float DeltaTime)
 		RelativeCamRot.Pitch = FMath::ClampAngle(RelativeCamRot.Pitch, -45, 45);
 		CameraBoom->SetRelativeRotation(RelativeCamRot);
 	}*/
-	if (GetController() != nullptr) {
-		FRotator ClampedControlRotation = GetControlRotation();
-		ClampedControlRotation.Pitch = FMath::ClampAngle(ClampedControlRotation.Pitch, -80, 70);
-		GetController()->SetControlRotation(ClampedControlRotation);
-	}
+	
 
 	if (CameraComp != nullptr) {
 		CameraComp->SetFieldOfView(FMath::FInterpTo(CameraComp->FieldOfView, CurrentCameraFOV, DeltaTime, ZoomSpeed));
@@ -143,12 +135,14 @@ void ACharacter1_CPP::SetWeaponRotation() {
 	GetWorld()->LineTraceSingleByChannel(
 		OUT OutHit,
 		WorldLoc, WorldLoc + Direction * 10000,
-		ECollisionChannel::ECC_Camera
+		WeaponFireCC
 	);
 	if (Aiming) {
 		if (PlayerCont != nullptr) {
-			if(OutHit.bBlockingHit){
-				AimLocation = OutHit.ImpactPoint;
+			if(OutHit.bBlockingHit && OutHit.GetActor()!=nullptr){
+				if (!OutHit.GetActor()->IsA(ALineProjectile::StaticClass())) {
+					AimLocation = OutHit.ImpactPoint;
+				}
 
 			}
 			else {
@@ -221,12 +215,12 @@ void ACharacter1_CPP::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 }
 
 //--------Set MovementInput--------//
-void ACharacter1_CPP::MoveForward(float Value) { return; }
-void ACharacter1_CPP::MoveRight(float Value) { return; }
+void ACharacter1_CPP::MoveForward(float Value) { SetMovementInput(GetActorForwardVector()*Value); }
+void ACharacter1_CPP::MoveRight(float Value) { SetMovementInput(GetActorRightVector()*Value); }
 void ACharacter1_CPP::SetMovementInput(FVector MovementInput) {
 	//CurrentMovementInput = MovementInput.GetSafeNormal();
-	CurrentMovementInput = MovementInput;
-	AddMovementInput(CurrentMovementInput);
+	AddMovementInput(MovementInput);
+	CurrentMovementInput = GetControlRotation().Vector();
 	if (Role == ROLE_AutonomousProxy) {
 		ServerSetMovementInput(MovementInput);
 	}
@@ -296,9 +290,7 @@ void ACharacter1_CPP::StopSprinting() {
 }
 void ACharacter1_CPP::SetSprinting(bool bNewSprinting) {
 	bSprinting = bNewSprinting;
-
 	GetCharacterMovement()->MaxWalkSpeed = bSprinting ? SprintSpeed : WalkSpeed;
-
 	if (Role == ROLE_AutonomousProxy) {
 		ServerSetSprinting(bNewSprinting);
 	}
@@ -371,6 +363,12 @@ void ACharacter1_CPP::SetMeshRotation(FRotator NewRotation, bool ToServer) {
 	MeshRotation = NewRotation;
 	auto SmoothedRotation = GetSmoothRotation(NewRotation);
 	OuterMesh->SetWorldRotation(SmoothedRotation);
+
+	if (GetController() != nullptr) {
+		FRotator ClampedControlRotation = GetControlRotation();
+		ClampedControlRotation.Pitch = FMath::ClampAngle(ClampedControlRotation.Pitch, -80, 70);
+		GetController()->SetControlRotation(ClampedControlRotation);
+	}
 
 	if (Role == ROLE_AutonomousProxy && ToServer) {
 		ServerSetMeshRotation(NewRotation, ToServer);

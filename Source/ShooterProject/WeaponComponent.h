@@ -51,6 +51,7 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		ACharacter1_CPP *CharacterRef;
 
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category=Camera)
 		float FOVIncrement = 10;
 
@@ -74,8 +75,12 @@ public:
 	UFUNCTION(Client, Unreliable)
 		void ClientFireWeapon(FVector newAimLocation);
 
+	UFUNCTION(NetMulticast, Reliable)
+		void MulticastFireWeapon(FVector newAimLocation);
+
+	void FireWeapon(FVector newAimLocation);
 
 private:
 	float NextShotTime;
-	void FireWeapon(FVector newAimLocation);
+
 };

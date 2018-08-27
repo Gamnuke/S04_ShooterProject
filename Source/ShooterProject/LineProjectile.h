@@ -22,16 +22,21 @@ public:
 		UStaticMeshComponent *Mesh;
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 		USceneComponent *MeshScene;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		TSubclassOf<ALineProjectile> ProjectileBlueprint;
 
 	UPROPERTY(Replicated, BlueprintReadWrite, EditAnywhere)
 		FVector TargetPoint;
+	UPROPERTY(Replicated, BlueprintReadWrite, EditAnywhere)
+		FVector ImpactNormal;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		float ForwardScale;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		int Increments;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		float Duration = 1;
-
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		bool BounceOff = false;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -43,4 +48,12 @@ public:
 	float EndTime;
 	float StartTime;
 	FVector StartLocation;
+
+	UFUNCTION(Server, Unreliable, WithValidation)
+	void ServerSetScale(FVector newTargetPoint, FVector newImpactNormal);
+	void SetScale(FVector newTargetPoint, FVector newImpactNormal);
+
+	UFUNCTION(Server, Unreliable, WithValidation)
+		void ServerSetVariables(FVector newTargetPoint);
+		void SetVariables(FVector newTargetPoint);
 };

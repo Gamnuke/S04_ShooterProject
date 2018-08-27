@@ -4,11 +4,14 @@
 #include "Engine/World.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "UnrealNetwork.h"
+#include "Engine/World.h"
+#include "DrawDebugHelpers.h"
 
 void ALineProjectile::GetLifetimeReplicatedProps(TArray< FLifetimeProperty > & OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ALineProjectile, TargetPoint);
+	DOREPLIFETIME(ALineProjectile, ImpactNormal);
 }
 
 // Sets default values
@@ -37,16 +40,51 @@ void ALineProjectile::BeginPlay()
 void ALineProjectile::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	float Alpha = FMath::Clamp(UKismetMathLibrary::NormalizeToRange(GetWorld()->TimeSeconds, StartTime, EndTime),0.0f,1.0f);
-	float QuadAlpha = -4 * FMath::Pow(Alpha,2) + 4 * Alpha;
+	SetScale(TargetPoint, ImpactNormal);
+	
+}
+
+
+
+
+void ALineProjectile::ServerSetVariables_Implementation(FVector newTargetPoint) { 
+	SetVariables(newTargetPoint);
+}
+bool ALineProjectile::ServerSetVariables_Validate(FVector newTargetPoint) { return true; }
+void ALineProjectile::SetVariables(FVector newTargetPoint) {
+	TargetPoint = newTargetPoint;
+	if (Role < ROLE_Authority) {
+		ServerSetVariables(newTargetPoint);
+	}
+}
+
+
+
+
+
+
+
+void ALineProjectile::SetScale(FVector newTargetPoint, FVector newImpactNormal) {
+	float Alpha = FMath::Clamp(UKismetMathLibrary::NormalizeToRange(GetWorld()->TimeSeconds, StartTime, EndTime), 0.0f, 1.0f);
+	float QuadAlpha = -4 * FMath::Pow(Alpha, 2) + 4 * Alpha;
 
 	MeshScene->SetRelativeScale3D(FVector(TargetScale * QuadAlpha, GetActorScale3D().Y, GetActorScale3D().Z));
 	if (Alpha >= 0.5) {
-		SetActorLocation(TargetPoint);
-		SetActorRotation((StartLocation - TargetPoint).Rotation());
+		SetActorLocation(newTargetPoint);
+		SetActorRotation((StartLocation - newTargetPoint).Rotation());
 	}
 	if (Alpha >= 1) {
+
 		Destroy();
 	}
+
+	if (Role < ROLE_Authority) {
+		ServerSetScale(newTargetPoint, newImpactNormal);
+	}
 }
+void ALineProjectile::ServerSetScale_Implementation(FVector newTargetPoint, FVector newImpactNormal) {
+	SetScale(newTargetPoint, newImpactNormal);
+}
+bool ALineProjectile::ServerSetScale_Validate(FVector newTargetPoint, FVector newImpactNormal) { return true; }
+
 

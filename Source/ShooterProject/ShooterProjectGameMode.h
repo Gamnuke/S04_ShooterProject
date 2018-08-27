@@ -13,6 +13,19 @@ class AShooterProjectGameMode : public AGameModeBase
 
 public:
 	AShooterProjectGameMode();
+
+	enum MenuState {
+		MainMenu,
+		SinglePlayer,
+		MultiPlayer,
+		Shop,
+		PauseMenu,
+		InGame
+	};
+	MenuState CurrentState = MenuState::MainMenu;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		float Yeet;
 };
 
 

@@ -45,8 +45,6 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 		UWeaponComponent *WeaponComponent;
 
-	UPROPERTY(Replicated)
-		FRotator CrntCntrlRot;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -78,18 +76,20 @@ public:
 		float AimYaw = 0;
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 		bool Aiming;
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		bool Firing;
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 		bool bSprinting;
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 		bool bJumping;
-	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		bool bFalling;
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 		FTransform WeaponHandleLocation;
 	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadOnly)
 		FVector CurrentMovementInput;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+		TEnumAsByte<ECollisionChannel> WeaponFireCC;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=CameraSettings)
 		FVector2D MinMaxFOV = FVector2D(60,80);

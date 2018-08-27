@@ -6,10 +6,13 @@
 
 AShooterProjectGameMode::AShooterProjectGameMode()
 {
-	// set default pawn class to our Blueprinted character
-	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnBPClass(TEXT("/Game/ThirdPersonCPP/Blueprints/ThirdPersonCharacter"));
-	if (PlayerPawnBPClass.Class != NULL)
-	{
-		DefaultPawnClass = PlayerPawnBPClass.Class;
-	}
+
 }
+
+// OnPostLogin
+	// TODO Load character data from local file:
+	// Character appearance, cash, hats they've bought and unlocked
+// Spawns a camera pawn blueprint
+// Possesses the pawn blueprint with the player that joined
+// Created a widget blueprint
+// Adds that widget blueprint to the the player's screen.

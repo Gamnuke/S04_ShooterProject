@@ -40,15 +40,14 @@ void UWeaponComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 }
 
 void UWeaponComponent::FireWeapon(FVector newAimLocation) {
+	if (CharacterRef == nullptr) { return; }
 	if (GetWorld()->GetTimeSeconds() > NextShotTime) {
-		if (CharacterRef != nullptr) {
-			CharacterRef->SetWeaponRotation();
-		}
+		CharacterRef->SetWeaponRotation();
 		NextShotTime = GetWorld()->GetTimeSeconds() + TimeBetweenShots;
 		ClientRecoilWeapon();
 
 		// Applies spread to weapon fire
-		FRotator randRecoil = FRotator(FMath::RandRange(-1, 1), FMath::RandRange(-1, 1), FMath::RandRange(-1, 1)) * Spread;
+		FRotator randRecoil = FRotator(FMath::RandRange(-1.0f, 1.0f), FMath::RandRange(-1.0f, 1.0f), FMath::RandRange(-1.0f, 1.0f)) * Spread;
 		FVector Direction = ((newAimLocation - BarrelSocket.GetLocation()).Rotation() + randRecoil).Vector().GetSafeNormal();
 
 		// Line trace from barrel to the new spreadded location
@@ -57,7 +56,7 @@ void UWeaponComponent::FireWeapon(FVector newAimLocation) {
 			SpreaddedTraj,
 			BarrelSocket.GetLocation(),
 			BarrelSocket.GetLocation() + Direction * 10000,
-			ECollisionChannel::ECC_Camera
+			CharacterRef->WeaponFireCC
 		);
 		FVector HitLocation;
 		if (SpreaddedTraj.bBlockingHit) {
@@ -66,7 +65,9 @@ void UWeaponComponent::FireWeapon(FVector newAimLocation) {
 		else {
 			HitLocation = SpreaddedTraj.TraceEnd;
 		}
-
+		if (SpreaddedTraj.GetActor() != nullptr) {
+			UE_LOG(LogTemp, Warning, TEXT("%s"), *SpreaddedTraj.GetActor()->GetName());
+		}
 		// Spawn projectile towards line trace hit location
 		if (Projectile != nullptr) {
 			FActorSpawnParameters Params;
@@ -75,17 +76,18 @@ void UWeaponComponent::FireWeapon(FVector newAimLocation) {
 
 			if (NewProj != nullptr) {
 				NewProj->SetActorLocation(BarrelSocket.GetLocation());
-				NewProj->TargetPoint = HitLocation;
-				UE_LOG(LogTemp, Warning, TEXT("Aimlocation : %s"), *NewProj->TargetPoint.ToString());
+				NewProj->SetVariables(HitLocation);
 				NewProj->SetActorRotation((HitLocation - BarrelSocket.GetLocation()).Rotation());
+				NewProj->ImpactNormal = SpreaddedTraj.ImpactNormal;
+				if (SpreaddedTraj.bBlockingHit) {
+					NewProj->BounceOff = true;
+				}
+				NewProj->ProjectileBlueprint = Projectile;
 			}
 		}
 		// Camera Recoil Effect
-		if (CharacterRef != nullptr)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Chaning FOV"));
-			ClientFireWeapon(FVector::ZeroVector);
-		}
+		ClientFireWeapon(FVector::ZeroVector);
+
 	}
 
 }
@@ -101,7 +103,11 @@ void UWeaponComponent::ClientRecoilWeapon_Implementation() {
 	if (WeaponMesh != nullptr) {
 		WeaponMesh->AddRelativeLocation(FVector::ForwardVector * RecoilDistance);
 
-		// SetWorldLocation(WeaponMesh->GetComponentLocation() - (WeaponMesh->GetForwardVector() * RecoilDistance));
+		// SetWorldLocation(WeaponMesh->GetComponentLocation() - (WeaponMesh->GetForwardVector() * RecoilDistance));/
 	}
+}
+
+void UWeaponComponent::MulticastFireWeapon_Implementation(FVector newAimLocation) {
+	FireWeapon(newAimLocation);
 }
  
