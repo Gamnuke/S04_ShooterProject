@@ -9,6 +9,11 @@ public class ShooterProject : ModuleRules
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "HeadMountedDisplay", "GameplayTasks" });
+        PublicDependencyModuleNames.AddRange(new string[] {
+             "OnlineSubsystem",
+             "OnlineSubsystemUtils"
+         });
         DynamicallyLoadedModuleNames.Add("OnlineSubsystemSteam");
+
     }
 }

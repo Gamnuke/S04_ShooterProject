@@ -9,5 +9,7 @@ public class ShooterProjectTarget : TargetRules
 	{
 		Type = TargetType.Game;
 		ExtraModuleNames.Add("ShooterProject");
-	}
+        bUsesSteam = true;
+        UEBuildConfiguration.bCompileSteamOSS = true;
+    }
 }
